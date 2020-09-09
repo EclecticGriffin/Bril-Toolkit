@@ -1,4 +1,5 @@
 mod bril;
+mod utils;
 
 use std::io::{self, Read};
 use std::process::exit;
@@ -20,5 +21,6 @@ fn main() {
     }
 
     let v: bril::Program = serde_json::from_str(&buffer).unwrap();
+    // print!("{:?}\n\n\n", v);
     print!("{}\n", serde_json::to_string(&v).unwrap());
 }

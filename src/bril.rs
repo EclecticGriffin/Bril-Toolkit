@@ -1,6 +1,7 @@
 use serde::{self, Deserialize, Serialize};
 
-pub type Name = String;
+use super::utils::name_mapper::Name;
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Program {
@@ -124,13 +125,13 @@ pub enum Op {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Var(pub String);
+pub struct Var(pub Name);
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Func(pub String);
+pub struct Func(pub Name);
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Label(pub String);
+pub struct Label(pub Name);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FnHeaders {
