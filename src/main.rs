@@ -22,5 +22,5 @@ fn main() {
 
     let v: bril::Program = serde_json::from_str(&buffer).unwrap();
     // print!("{:?}\n\n\n", v);
-    print!("{}\n", serde_json::to_string(&v).unwrap());
+    println!("{}", serde_json::to_string(&v).unwrap());
 }
