@@ -9,9 +9,3 @@ pub struct Label(pub Name);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnName(pub Name);
-
-impl FnName {
-    pub fn to_label(&self) -> Label {
-        Label(self.0)
-    }
-}

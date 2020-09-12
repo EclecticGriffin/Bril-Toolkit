@@ -64,9 +64,9 @@ impl<'a> NameReader {
         let map = &*self.mapper.as_ref().lock().unwrap();
         map.get_string(name).clone()
     }
-    pub fn remove_and_return_string(&self, name: &Name) -> String {
-        (*self.mapper.as_ref().lock().unwrap()).remove_and_return_string(name)
-    }
+    // pub fn remove_and_return_string(&self, name: &Name) -> String {
+    //     (*self.mapper.as_ref().lock().unwrap()).remove_and_return_string(name)
+    // }
 
 }
 
@@ -98,10 +98,10 @@ impl NameMapper {
         self.map.get_by_right(name).unwrap()
     }
 
-    fn remove_and_return_string(&mut self, name: &Name) -> String {
-        let (s, _n) = self.map.remove_by_right(name).unwrap();
-        s
-    }
+    // fn remove_and_return_string(&mut self, name: &Name) -> String {
+    //     let (s, _n) = self.map.remove_by_right(name).unwrap();
+    //     s
+    // }
 }
 
 // based entirely on how stdin is handled

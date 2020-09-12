@@ -73,22 +73,16 @@ impl CFGNode {
         }
     }
 
-    pub fn apply_label(&mut self, label: Label) {
-        if self.label.is_none() {
-            self.label = Some(label)
-        }
-    }
+    // pub fn apply_label(&mut self, label: Label) {
+    //     if self.label.is_none() {
+    //         self.label = Some(label)
+    //     }
+    // }
 
     pub fn is_labeled(&self) -> bool {
         self.label.is_some()
     }
 
-    pub fn has_label(&self, target: &Label) -> bool {
-        match &self.label {
-            Some(l) => *l == *target,
-            None => false,
-        }
-    }
 
     fn make_serializeable(mut self) -> Vec<Instr> {
         if self.is_labeled() {
