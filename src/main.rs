@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::process::exit;
 
 use serde_json;
-
+use bril::transformers::cfg_transformers::dead_block::remove_inaccessible_blocks;
 
 fn main() {
     let stdin = io::stdin();
@@ -21,6 +21,18 @@ fn main() {
     }
 
     let v: bril::Program = serde_json::from_str(&buffer).unwrap();
-    // print!("{:?}\n\n\n", v);
-    println!("{}", serde_json::to_string(&v).unwrap());
+    let mut funcs = bril::transformers::cfg::construct_cfg(v);
+    for func in funcs.iter() {
+        print!("{}\n\n\n", func);
+    }
+
+    println!("\n\n making modifications \n\n");
+
+    funcs = funcs.into_iter().map(|x| remove_inaccessible_blocks(x)).collect();
+
+    for func in funcs {
+        print!("{}\n\n\n", func);
+    }
+
+    // println!("{}", serde_json::to_string(&v).unwrap());
 }
