@@ -5,7 +5,7 @@ use super::basic_types::Type;
 use super::instructions::Instr;
 use super::super::transformers::cfg::Node;
 use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_block};
-use super::super::transformers::cfg_transformers::dead_block::remove_inaccessible_blocks;
+use super::super::transformers::dead_block::remove_inaccessible_blocks;
 
 use std::mem::replace;
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,10 +60,6 @@ impl CFGFunction {
             r_type: self.r_type,
             instrs: self.instrs.into_iter().map(|x| x.make_serializeable()).flatten().collect()
         }
-    }
-
-    pub fn instrs_mut(&mut self) -> &mut Vec<Node> {
-        &mut self.instrs
     }
 
     pub fn drop_orphan_blocks(&mut self) {
