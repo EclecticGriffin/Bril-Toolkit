@@ -1,10 +1,50 @@
 use bimap::BiHashMap;
-use std::cell::RefCell;
 use std::sync::{Arc, Mutex, Once};
 use std::mem::transmute;
 
+use serde::de::{self, Deserializer, Deserialize, Visitor};
+use serde::{Serialize, Serializer};
+use std::fmt;
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct Name(u64);
+
+impl<'de> Deserialize<'de> for Name {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de> {
+
+            struct NameVisitor;
+
+            impl<'de> Visitor<'de> for NameVisitor {
+                type Value = Name;
+
+                fn visit_str<E>(self, value: &str) -> Result<Name,E>
+                where
+                    E: de::Error
+                {
+                    let namer = namer();
+                    Ok(namer.get_name(String::from(value)))
+                }
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("`name`")
+                }
+    }
+    deserializer.deserialize_identifier(NameVisitor)
+    }
+}
+
+impl Serialize for Name {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        let namer = namer();
+        let string = namer.get_string(&self);
+        serializer.serialize_str(&string)
+    }
+}
 
 #[derive(Clone)]
 pub struct NameReader {
@@ -28,9 +68,6 @@ impl<'a> NameReader {
         (*self.mapper.as_ref().lock().unwrap()).remove_and_return_string(name)
     }
 
-    // pub fn lock(&self) -> {
-    //     self.mapper.lock().unwrap()
-    // }
 }
 
 struct NameMapper {
@@ -41,7 +78,7 @@ struct NameMapper {
 impl NameMapper {
     fn new() -> NameMapper {
         NameMapper {
-            next_name:  Name(0),
+            next_name: Name(0),
             map: BiHashMap::<String, Name>::new()
         }
     }
@@ -62,12 +99,12 @@ impl NameMapper {
     }
 
     fn remove_and_return_string(&mut self, name: &Name) -> String {
-        let (s, n) = self.map.remove_by_right(name).unwrap();
+        let (s, _n) = self.map.remove_by_right(name).unwrap();
         s
     }
 }
 
-
+// based entirely on how stdin is handled
 pub fn namer() -> NameReader {
     static mut NAMEREADER: *const NameReader = 0 as *const NameReader;
     static ONCE: Once = Once::new();
@@ -75,7 +112,7 @@ pub fn namer() -> NameReader {
     unsafe {
         ONCE.call_once(|| {
             let reader = NameReader::new();
-            NAMEREADER = transmute(Box::new(reader));
+            NAMEREADER = transmute(Box::new(reader)); // !!!!
         });
     (*NAMEREADER).clone()
     }

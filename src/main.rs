@@ -1,11 +1,10 @@
-mod bril;
-mod utils;
+mod serde_structs;
+mod transformers;
 
 use std::io::{self, Read};
 use std::process::exit;
+use serde_structs::structs::Program;
 
-use serde_json;
-use bril::transformers::cfg_transformers::dead_block::remove_inaccessible_blocks;
 
 fn main() {
     let stdin = io::stdin();
@@ -13,26 +12,31 @@ fn main() {
     let mut handle = stdin.lock();
 
     match handle.read_to_string(&mut buffer) {
-        Ok(n) => {}
+        Ok(_) => {}
         Err(error) => {
             eprint!("Encountered error {}", error);
             exit(1)
         }
     }
 
-    let v: bril::Program = serde_json::from_str(&buffer).unwrap();
-    let mut funcs = bril::transformers::cfg::construct_cfg(v);
-    for func in funcs.iter() {
-        print!("{}\n\n\n", func);
-    }
+    let v: Program = serde_json::from_str(&buffer).unwrap();
+    let mut v = v.determine_cfg();
 
-    println!("\n\n making modifications \n\n");
+    // for func in v.functions.iter() {
+    //     print!("{}\n\n\n", func);
+    // }
 
-    funcs = funcs.into_iter().map(|x| remove_inaccessible_blocks(x)).collect();
+    // println!("\n\n making modifications \n\n");
 
-    for func in funcs {
-        print!("{}\n\n\n", func);
-    }
 
+
+    for _ in v.functions.iter_mut().map(|f| f.drop_orphan_blocks()) {}
+
+    // for func in v.functions.iter() {
+    //     print!("{}\n\n\n", func);
+    // }
+
+    let v = v.make_serializeable();
+    println!("{}", serde_json::to_string(&v).ok().unwrap_or_default());
     // println!("{}", serde_json::to_string(&v).unwrap());
 }

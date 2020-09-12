@@ -1,10 +1,10 @@
-use super::super::serde_structs::*;
-use crate::utils::name_mapper;
+use super::super::serde_structs::structs::{Label, Instr, Op};
+use super::super::serde_structs::namer;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::{cell::RefCell, fmt, fmt::Display};
-// fn gen_cfg(prog: Program) -> PLACEHOLDER {
+
+
 
 type Block = Vec<Instr>;
 type LinkTarget = Weak<CFGNode>;
@@ -36,22 +36,18 @@ impl Node {
         Rc::downgrade(&self.0)
     }
 
-    pub fn new(mut input: Vec<Instr>) -> Self {
+    pub fn new(input: Vec<Instr>) -> Self {
         let inner = CFGNode::new(input);
         Node(Rc::new(inner))
     }
     pub fn clone(&self) -> Node {
         Node(Rc::clone(&self.0))
     }
+
+    pub fn make_serializeable(self) -> Vec<Instr> {
+        Rc::try_unwrap(self.0).ok().unwrap().make_serializeable()
+    }
 }
-
-// impl Deref for Node {
-//     type Target = Rc<CFGNode>;
-
-//     fn deref(&self) -> &Self::Target {
-
-//     }
-// }
 
 impl CFGNode {
     pub fn new(mut input: Vec<Instr>) -> CFGNode {
@@ -92,6 +88,13 @@ impl CFGNode {
             Some(l) => *l == *target,
             None => false,
         }
+    }
+
+    fn make_serializeable(mut self) -> Vec<Instr> {
+        if self.is_labeled() {
+            self.contents.insert(0, self.label.unwrap().make_instr());
+        }
+        self.contents
     }
 }
 
@@ -151,7 +154,7 @@ fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
             let target_ref = map.get(&target).unwrap_or_else(|| {
                 panic!(
                     "Unable to locate label {}",
-                    name_mapper::namer().get_string(&(target.0))
+                    namer().get_string(&(target.0))
                 )
             });
             block1.out.replace(Some(Link::Jump(target_ref.reference())));
@@ -163,14 +166,14 @@ fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
             let true_target = map.get(&true_label).unwrap_or_else(|| {
                 panic!(
                     "Unable to locate label {}",
-                    name_mapper::namer().get_string(&(true_label.0))
+                    namer().get_string(&(true_label.0))
                 )
             });
 
             let false_target = map.get(&false_label).unwrap_or_else(|| {
                 panic!(
                     "Unable to locate label {}",
-                    name_mapper::namer().get_string(&(false_label.0))
+                    namer().get_string(&(false_label.0))
                 )
             });
 
@@ -201,7 +204,7 @@ fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
                 let target_ref = map.get(&target).unwrap_or_else(|| {
                     panic!(
                         "Unable to locate label {}",
-                        name_mapper::namer().get_string(&(target.0))
+                        namer().get_string(&(target.0))
                     )
                 });
                 last_block
@@ -216,14 +219,14 @@ fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
                 let true_target = map.get(&true_label).unwrap_or_else(|| {
                     panic!(
                         "Unable to locate label {}",
-                        name_mapper::namer().get_string(&(true_label.0))
+                        namer().get_string(&(true_label.0))
                     )
                 });
 
                 let false_target = map.get(&false_label).unwrap_or_else(|| {
                     panic!(
                         "Unable to locate label {}",
-                        name_mapper::namer().get_string(&(false_label.0))
+                        namer().get_string(&(false_label.0))
                     )
                 });
 
@@ -257,9 +260,6 @@ pub fn connect_basic_blocks(blocks: &mut Vec<Node>) {
     connect_terminal_block(blocks.last().unwrap(), &map)
 }
 
-pub fn construct_cfg(Program { functions: funs }: Program) -> Vec<CFGFunction> {
-    funs.into_iter().map(|x| x.form_function_blocks()).collect()
-}
 
 impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -270,12 +270,12 @@ impl Display for Node {
 impl Display for CFGNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(label) = &self.label {
-            write!(f, "Block {}:\n",name_mapper::namer().get_string(&label.0));
+            writeln!(f, "Block {}:", namer().get_string(&label.0))?;
         } else {
-            write!(f, "Block (unlabeled):\n");
+            writeln!(f, "Block (unlabeled):")?;
         }
         for line in self.contents.iter() {
-            write!(f,"     {}\n", line);
+            writeln!(f,"     {}", line)?;
         }
         if let Some(x) = self.out.borrow().as_ref() {
             write!(f, " Connected to: {}", x)
@@ -289,7 +289,7 @@ impl Display for CFGNode {
 
 impl Display for Link {
     fn fmt(&self, f: & mut fmt::Formatter<'_>) -> fmt::Result {
-        let namer = name_mapper::namer();
+        let namer = namer();
         match &self {
             Link::Ret => {
                 write!(f, "<RETURN>")
@@ -317,10 +317,9 @@ impl Display for Link {
                 let val = val.upgrade();
                 if let Some(val) = val {
                     if let  Some(label) = &val.label {
-                        write!(f, "<JUMP: .{}>", namer.get_string(&label.0));
+                        write!(f, "<JUMP: .{}>", namer.get_string(&label.0))?
                     }
-                    write!(f,"")
-
+                    Ok(())
                 } else {
                     write!(f, "?? LOST CONNECTION ??")
                 }
@@ -329,19 +328,20 @@ impl Display for Link {
                 let val = true_branch.upgrade();
                 if let Some(val) = val {
                     if let Some(label) = &val.label{
-                        write!(f, "<BR TRUE: .{}>", namer.get_string(&label.0));
+                        write!(f, "<BR TRUE: .{}>", namer.get_string(&label.0))?;
                     }
                 } else {
-                    write!(f, "<BR TRUE:?? LOST CONNECTION ??>");
+                    write!(f, "<BR TRUE:?? LOST CONNECTION ??>")?;
                 }
 
-                write!(f, " ");
+                write!(f, " ")?;
                 let val = false_branch.upgrade();
                 if let Some(val) = val {
                     if let Some(label) = &val.label{
-                        write!(f, "<BR FALSE: .{}>", namer.get_string(&label.0));
+                        write!(f, "<BR FALSE: .{}>", namer.get_string(&label.0))
+                    } else {
+                        Ok(())
                     }
-                    write!(f,"")
                 } else {
                     write!(f, "<BR FALSE:?? LOST CONNECTION ??>")
                 }
