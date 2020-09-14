@@ -22,7 +22,7 @@ fn main() {
     let v: Program = serde_json::from_str(&buffer).unwrap();
     let mut v = v.determine_cfg();
 
-    for _ in v.functions.iter_mut().map(|f| f.drop_orphan_blocks()) {}
+    for _ in v.functions.iter_mut().map(|f| f.apply_basic_dce()) {}
 
     let v = v.make_serializeable();
     println!("{}", serde_json::to_string_pretty(&v).ok().unwrap_or_default());

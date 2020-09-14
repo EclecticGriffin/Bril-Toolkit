@@ -6,11 +6,11 @@ use std::{cell::RefCell, fmt, fmt::Display};
 
 
 
-type Block = Vec<Instr>;
+type Block = RefCell<Vec<Instr>>;
 type LinkTarget = Weak<CFGNode>;
 type LabelMap = HashMap<Label, Node>;
 #[derive(Debug)]
-enum Link {
+pub enum Link {
     Ret,
     Exit,
     Fallthrough(LinkTarget),
@@ -23,9 +23,9 @@ enum Link {
 
 #[derive(Debug)]
 pub struct CFGNode {
-    contents: Block,
-    label: Option<Label>,
-    out: RefCell<Option<Link>>,
+    pub contents: Block,
+    pub label: Option<Label>,
+    pub out: RefCell<Option<Link>>,
 }
 
 #[derive(Debug)]
@@ -61,13 +61,13 @@ impl CFGNode {
 
             CFGNode {
                 label: Some(label),
-                contents: input,
+                contents: RefCell::new(input),
                 out: RefCell::new(None),
             }
         } else {
             CFGNode {
                 label: None,
-                contents: input,
+                contents: RefCell::new(input),
                 out: RefCell::new(None),
             }
         }
@@ -86,9 +86,9 @@ impl CFGNode {
 
     fn make_serializeable(mut self) -> Vec<Instr> {
         if self.is_labeled() {
-            self.contents.insert(0, self.label.unwrap().make_instr());
+            self.contents.borrow_mut().insert(0, self.label.unwrap().make_instr());
         }
-        self.contents
+        self.contents.into_inner()
     }
 }
 
@@ -132,7 +132,8 @@ fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
     }
 
     let instrs = &block1.contents;
-    let last = instrs.last().unwrap();
+    let tmp = instrs.borrow();
+    let last = tmp.last().unwrap();
     let (op, labels) = match last {
         Instr::Value { op, labels, .. } | Instr::Effect { op, labels, .. } => (op, labels),
         _ => {
@@ -189,7 +190,8 @@ fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
 
 fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
     let instrs = &last_block.contents;
-    let last = instrs.last().unwrap();
+    let tmp = instrs.borrow();
+    let last = tmp.last().unwrap();
 
     match last {
         Instr::Value { op, labels, .. } | Instr::Effect { op, labels, .. } => match op {
@@ -268,7 +270,7 @@ impl Display for CFGNode {
         } else {
             writeln!(f, "Block (unlabeled):")?;
         }
-        for line in self.contents.iter() {
+        for line in self.contents.borrow_mut().iter() {
             writeln!(f,"     {}", line)?;
         }
         if let Some(x) = self.out.borrow().as_ref() {

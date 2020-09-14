@@ -5,7 +5,8 @@ use super::basic_types::Type;
 use super::instructions::Instr;
 use super::super::transformers::cfg::Node;
 use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_block};
-use super::super::transformers::dead_block::remove_inaccessible_blocks;
+use super::super::transformers::orphan::remove_inaccessible_blocks;
+use super::super::transformers::dce::dce;
 
 use std::mem::replace;
 #[derive(Serialize, Deserialize, Debug)]
@@ -67,6 +68,10 @@ impl CFGFunction {
 
         self.instrs = Vec::new();
         self.instrs = remove_inaccessible_blocks(tmp);
+    }
+
+    pub fn apply_basic_dce(&mut self) {
+        dce(&mut self.instrs)
     }
 }
 
