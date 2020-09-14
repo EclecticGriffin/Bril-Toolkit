@@ -1,0 +1,76 @@
+# Bril Toolkit? - HW0 (Bril warmup)
+## Griffin Berlstein
+
+I've implemented a simple orphan block removal in rust. This means that cannot
+be jumped to will be removed from the code. This is a very weak form of dead
+code elimination as it doesn't evaluate actual reachability beyond whether or
+nor there exists some jump instruction pointing to the block.
+
+### Example
+
+```
+@main {
+    v: int = const 4;
+    jmp .else;
+    v: int = const 2;
+.somewhere:
+    print v;
+.else:
+    print v;
+}
+```
+
+becomes
+
+```
+@main {
+  v: int = const 4;
+  jmp .else;
+.else:
+  print v;
+}
+```
+
+as .somewhere has no node pointing to it in the CFG.
+
+Technically if considered from the perspective of the function graph, the root
+block also has no parent, but for the purpose of this analysis the root block is
+always taken to have a parent and therefore always be non-removable
+
+
+
+### Build instructions
+
+```
+cargo build
+```
+
+if you want an optimized binary (for some reason)
+
+```
+cargo build --release
+```
+
+### Example usage
+```
+(bril2json < sample.bril) | cargo run -- | bril2txt
+```
+
+or for the built version
+
+```
+(bril2json < sample.bril) |./target/release/bril_toolkit | bril2txt
+```
+
+### Notes on serialization
+
+The JSON parsing is not super complex, however, internally the toolkit maps all
+name strings to unsigned integers and serializes everything into a structured
+form. This is a bit of a pain for getting the serialization set up initially
+but makes things less "stringly typed" down the line.
+
+This does mean I'm using the newtype pattern a lot to wrap over a lot of different
+components that are representationally identical but spiritually dissimilar but
+as a result, despite them being both mapped to numbers internally, there is no
+risk of using a variable name in a place where a function name is expected and
+so on.
