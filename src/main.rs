@@ -37,6 +37,6 @@ fn main() {
     // }
 
     let v = v.make_serializeable();
-    println!("{}", serde_json::to_string(&v).ok().unwrap_or_default());
+    println!("{}", serde_json::to_string_pretty(&v).ok().unwrap_or_default());
     // println!("{}", serde_json::to_string(&v).unwrap());
 }
