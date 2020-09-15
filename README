@@ -74,3 +74,7 @@ components that are representationally identical but spiritually dissimilar but
 as a result, despite them being both mapped to numbers internally, there is no
 risk of using a variable name in a place where a function name is expected and
 so on.
+
+### Note on graph representation
+In this submission the CFG graph is constructed somewhat explicitly. That may
+change later.
