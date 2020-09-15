@@ -1,0 +1,54 @@
+{
+  "functions": [
+    {
+      "name": "main",
+      "args": [],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "ten",
+          "type": "int",
+          "value": 10
+        },
+        {
+          "op": "add",
+          "dest": "meaningless_add",
+          "type": "int",
+          "args": [
+            "ten",
+            "ten"
+          ],
+          "funcs": [],
+          "labels": []
+        },
+        {
+          "op": "print",
+          "args": [
+            "ten"
+          ],
+          "funcs": [],
+          "labels": []
+        },
+        {
+          "op": "jmp",
+          "args": [],
+          "funcs": [],
+          "labels": [
+            "done"
+          ]
+        },
+        {
+          "label": "done"
+        },
+        {
+          "op": "print",
+          "args": [
+            "v"
+          ],
+          "funcs": [],
+          "labels": []
+        }
+      ]
+    }
+  ]
+}
