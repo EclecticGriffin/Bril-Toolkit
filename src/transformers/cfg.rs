@@ -3,12 +3,61 @@ use super::super::serde_structs::namer;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::{cell::RefCell, fmt, fmt::Display};
+use std::iter::Iterator;
 
 
 
-type Block = RefCell<Vec<Instr>>;
-type LinkTarget = Weak<CFGNode>;
-type LabelMap = HashMap<Label, Node>;
+type LinkTarget = Weak<Node>;
+type LabelMap = HashMap<Label, Rc<Node>>;
+
+#[derive(Debug)]
+pub struct Block(pub Vec<Instr>);
+
+impl Block {
+    pub fn new(input: Vec<Instr>) -> Self {
+        Block(input)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn label(&self) -> Option<Label> {
+        self.0[0].extract_label()
+    }
+
+    pub fn last(&self) -> &Instr {
+        self.0.last().unwrap()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn make_serializeable(self) -> Vec<Instr> {
+        self.0
+    }
+
+    fn iter(&self) -> std::slice::Iter<Instr> {
+        self.0.iter()
+    }
+
+    fn iter_mut(&mut self) -> std::slice::IterMut<Instr> {
+        self.0.iter_mut()
+    }
+
+}
+
+impl IntoIterator for Block {
+    type Item = Instr;
+
+    type IntoIter = std::vec::IntoIter<Instr>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 #[derive(Debug)]
 pub enum Link {
     Ret,
@@ -22,124 +71,93 @@ pub enum Link {
 }
 
 #[derive(Debug)]
-pub struct CFGNode {
-    pub contents: Block,
-    pub label: Option<Label>,
+pub struct Node {
+    pub contents: RefCell<Block>,
     pub out: RefCell<Option<Link>>,
 }
 
-#[derive(Debug)]
-pub struct Node(pub Rc<CFGNode>);
-
 impl Node {
-    pub fn reference(&self) -> Weak<CFGNode> {
-        Rc::downgrade(&self.0)
-    }
-
-    pub fn new(input: Vec<Instr>) -> Self {
-        let inner = CFGNode::new(input);
-        Node(Rc::new(inner))
-    }
-    pub fn clone(&self) -> Node {
-        Node(Rc::clone(&self.0))
-    }
-
-    pub fn make_serializeable(self) -> Vec<Instr> {
-        Rc::try_unwrap(self.0).ok().unwrap().make_serializeable()
-    }
-}
-
-impl CFGNode {
-    pub fn new(mut input: Vec<Instr>) -> CFGNode {
+    pub fn from_block(input: Block) -> Node {
         if input.is_empty() {
             panic!("Tried to create an empty block????\n")
         }
-
-        if input[0].is_label() {
-
-            let label = input.remove(0).extract_label().unwrap();
-
-            CFGNode {
-                label: Some(label),
+            Node {
                 contents: RefCell::new(input),
                 out: RefCell::new(None),
             }
-        } else {
-            CFGNode {
-                label: None,
-                contents: RefCell::new(input),
-                out: RefCell::new(None),
-            }
-        }
     }
 
-    // pub fn apply_label(&mut self, label: Label) {
-    //     if self.label.is_none() {
-    //         self.label = Some(label)
-    //     }
-    // }
+    pub fn new(input: Vec<Instr>) -> Node{
+        Node::from_block(Block::new(input))
+    }
+
+    pub fn label(&self) -> Option<Label>{
+        self.contents.borrow().label()
+    }
 
     pub fn is_labeled(&self) -> bool {
-        self.label.is_some()
+        self.label().is_some()
     }
 
-
-    fn make_serializeable(mut self) -> Vec<Instr> {
-        if self.is_labeled() {
-            self.contents.borrow_mut().insert(0, self.label.unwrap().make_instr());
-        }
-        self.contents.into_inner()
+    pub fn make_serializeable(self) -> Vec<Instr> {
+        self.contents.into_inner().make_serializeable()
     }
+
 }
 
-pub fn construct_basic_block(instrs: Vec<Instr>) -> Vec<Node> {
-    let mut output = Vec::<Node>::new();
+
+pub fn construct_cfg_nodes(instrs: Vec<Block>) -> Vec<Rc<Node>> {
+    instrs.into_iter().map(|x|{Rc::new(
+        Node::from_block(x)
+    )}).collect()
+}
+
+pub fn construct_basic_blocks(instrs: Vec<Instr>) -> Vec<Block> {
+    let mut output = Vec::<Block>::new();
     let mut cur_block = Vec::<Instr>::new();
     for instr in instrs.into_iter() {
         if instr.is_label() {
             if !cur_block.is_empty() {
-                output.push(Node::new(cur_block));
+                output.push(Block::new(cur_block));
             }
             cur_block = vec![instr];
         } else if instr.is_terminator() {
             cur_block.push(instr);
-            output.push(Node::new(cur_block));
+            output.push(Block::new(cur_block));
             cur_block = Vec::<Instr>::new();
         } else {
             cur_block.push(instr);
         }
     }
     if !cur_block.is_empty() {
-        output.push(Node::new(cur_block));
+        output.push(Block::new(cur_block));
     }
     output
 }
 
-fn construct_label_lookup(blocks: &[Node]) -> LabelMap {
+fn construct_label_lookup(blocks: &[Rc<Node>]) -> LabelMap {
     let mut map = LabelMap::new();
-    for outer in blocks.iter() {
-        if outer.0.is_labeled() {
-            map.insert(outer.0.label.as_ref().unwrap().clone(), outer.clone());
+    for node in blocks.iter() {
+        if node.is_labeled() {
+            map.insert(node.label().unwrap(), Rc::clone(node));
         }
     }
     map
 }
 
-fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
-    let &Node(ref block1) = current;
-    if block1.out.borrow().is_some() {
+fn connect_block(current: &Rc<Node>, node: &Rc<Node>, map: &LabelMap) {
+    if current.out.borrow().is_some() {
         return;
     }
 
-    let instrs = &block1.contents;
-    let tmp = instrs.borrow();
-    let last = tmp.last().unwrap();
+    let instrs = &current.contents.borrow();
+    let last = instrs.last();
     let (op, labels) = match last {
         Instr::Value { op, labels, .. } | Instr::Effect { op, labels, .. } => (op, labels),
         _ => {
-            block1
+            current
                 .out
-                .replace(Some(Link::Fallthrough(node.reference())));
+                .replace(Some(Link::Fallthrough(Rc::downgrade(node))));
             return;
         }
     };
@@ -152,7 +170,7 @@ fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
                     namer().get_string(&(target.0))
                 )
             });
-            block1.out.replace(Some(Link::Jump(target_ref.reference())));
+            current.out.replace(Some(Link::Jump(Rc::downgrade(target_ref))));
         }
         Op::Br => {
             let true_label = &labels[0];
@@ -172,26 +190,25 @@ fn connect_block(current: &Node, node: &Node, map: &LabelMap) {
                 )
             });
 
-            block1.out.replace(Some(Link::Branch {
-                true_branch: true_target.reference(),
-                false_branch: false_target.reference(),
+            current.out.replace(Some(Link::Branch {
+                true_branch: Rc::downgrade(true_target),
+                false_branch: Rc::downgrade(false_target),
             }));
         }
         Op::Ret => {
-            block1.out.replace(Some(Link::Ret));
+            current.out.replace(Some(Link::Ret));
         }
         _ => {
-            block1
+            current
                 .out
-                .replace(Some(Link::Fallthrough(node.reference())));
+                .replace(Some(Link::Fallthrough(Rc::downgrade(node))));
         }
     }
 }
 
-fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
-    let instrs = &last_block.contents;
-    let tmp = instrs.borrow();
-    let last = tmp.last().unwrap();
+fn connect_terminal_block( last_block: &Node, map: &LabelMap) {
+    let instrs = &last_block.contents.borrow();
+    let last = instrs.last();
 
     match last {
         Instr::Value { op, labels, .. } | Instr::Effect { op, labels, .. } => match op {
@@ -205,7 +222,7 @@ fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
                 });
                 last_block
                     .out
-                    .replace(Some(Link::Jump(target_ref.reference())));
+                    .replace(Some(Link::Jump(Rc::downgrade(target_ref))));
                 return;
             }
             Op::Br => {
@@ -227,8 +244,8 @@ fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
                 });
 
                 last_block.out.replace(Some(Link::Branch {
-                    true_branch: true_target.reference(),
-                    false_branch: false_target.reference(),
+                    true_branch: Rc::downgrade(true_target),
+                    false_branch: Rc::downgrade(false_target),
                 }));
                 return;
             }
@@ -244,7 +261,7 @@ fn connect_terminal_block(&Node(ref last_block): &Node, map: &LabelMap) {
     last_block.out.replace(Some(Link::Exit));
 }
 
-pub fn connect_basic_blocks(blocks: &mut Vec<Node>) {
+pub fn connect_basic_blocks(blocks: &mut Vec<Rc<Node>>) {
     let map = construct_label_lookup(blocks);
     let mut second_iter = blocks.iter();
     second_iter.next();
@@ -257,15 +274,10 @@ pub fn connect_basic_blocks(blocks: &mut Vec<Node>) {
 }
 
 
+
 impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Display for CFGNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(label) = &self.label {
+        if let Some(label) = &self.label() {
             writeln!(f, "Block {}:", namer().get_string(&label.0))?;
         } else {
             writeln!(f, "Block (unlabeled):")?;
@@ -296,7 +308,7 @@ impl Display for Link {
             Link::Fallthrough(val) => {
                 let val = val.upgrade();
                 if let Some(val) = val {
-                    match &val.label {
+                    match val.label() {
                         Some(label) => {
                             write!(f, "<FALLTHROUGH: .{}>", namer.get_string(&label.0))
                         }
@@ -312,7 +324,7 @@ impl Display for Link {
             Link::Jump(val) => {
                 let val = val.upgrade();
                 if let Some(val) = val {
-                    if let  Some(label) = &val.label {
+                    if let  Some(label) = val.label() {
                         write!(f, "<JUMP: .{}>", namer.get_string(&label.0))?
                     }
                     Ok(())
@@ -323,7 +335,7 @@ impl Display for Link {
             Link::Branch { true_branch, false_branch } => {
                 let val = true_branch.upgrade();
                 if let Some(val) = val {
-                    if let Some(label) = &val.label{
+                    if let Some(label) = val.label() {
                         write!(f, "<BR TRUE: .{}>", namer.get_string(&label.0))?;
                     }
                 } else {
@@ -333,7 +345,7 @@ impl Display for Link {
                 write!(f, " ")?;
                 let val = false_branch.upgrade();
                 if let Some(val) = val {
-                    if let Some(label) = &val.label{
+                    if let Some(label) = val.label(){
                         write!(f, "<BR FALSE: .{}>", namer.get_string(&label.0))
                     } else {
                         Ok(())

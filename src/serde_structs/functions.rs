@@ -4,9 +4,10 @@ use super::names::{FnName, namer, Var};
 use super::basic_types::Type;
 use super::instructions::Instr;
 use super::super::transformers::cfg::Node;
-use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_block};
+use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_blocks, construct_cfg_nodes};
 use super::super::transformers::orphan::remove_inaccessible_blocks;
-use super::super::transformers::dce::dce;
+use super::super::transformers::dce::local_dce;
+use std::rc::Rc;
 
 use std::mem::replace;
 #[derive(Serialize, Deserialize, Debug)]
@@ -31,14 +32,14 @@ pub struct Function {
 
 impl Function {
     pub fn make_cfg(self) -> CFGFunction {
-        let mut instrs = construct_basic_block(self.instrs);
-        connect_basic_blocks(&mut instrs);
+        let mut blocks = construct_cfg_nodes(construct_basic_blocks(self.instrs));
+        connect_basic_blocks(&mut blocks);
 
         CFGFunction {
             name: self.name,
             args: self.args,
             r_type: self.r_type,
-            instrs
+            blocks
         }
     }
 }
@@ -50,7 +51,7 @@ pub struct CFGFunction {
 
     r_type: Option<Type>,
 
-    instrs: Vec<Node>,
+    blocks: Vec<Rc<Node>>,
 }
 
 impl CFGFunction {
@@ -59,19 +60,21 @@ impl CFGFunction {
             name: self.name,
             args: self.args,
             r_type: self.r_type,
-            instrs: self.instrs.into_iter().map(|x| x.make_serializeable()).flatten().collect()
+            instrs: self.blocks.into_iter().map(|x| Rc::try_unwrap(x).unwrap().make_serializeable()).flatten().collect()
         }
     }
 
     pub fn drop_orphan_blocks(&mut self) {
-        let tmp = replace(&mut self.instrs, Vec::new());
+        let tmp = replace(&mut self.blocks, Vec::new());
 
-        self.instrs = Vec::new();
-        self.instrs = remove_inaccessible_blocks(tmp);
+        self.blocks = remove_inaccessible_blocks(tmp);
     }
 
     pub fn apply_basic_dce(&mut self) {
-        dce(&mut self.instrs)
+        for block in self.blocks.iter_mut() {
+            local_dce(block);
+        }
+
     }
 }
 
@@ -83,7 +86,7 @@ impl Display for CFGFunction {
         if let Some(x) = &self.r_type {
             writeln!(f, "returns {}", x)?;
         }
-        for node in self.instrs.iter() {
+        for node in self.blocks.iter() {
             writeln!(f, "\n{}", node)?;
         }
         Ok(())
