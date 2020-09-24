@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet};
 use super::cfg::{Node};
 use crate::serde_structs::structs::{Var, Instr, };
 
@@ -58,7 +58,7 @@ pub fn trivial_local_dce(instrs: Vec<Instr>) -> Vec<Instr> {
     .filter(|(t, _)| {*t})
     .map(|(_, i)| {i})
     .collect();
-    
+
     i.reverse();
     i
 }
@@ -98,7 +98,7 @@ pub fn trivial_global_dce(nodes: &mut Vec<Instr>) {
 
     nodes.retain(|x| -> bool {
         match x {
-            Instr::Const { dest, .. } | Instr::Value { dest, .. } => {delete_set.contains(dest)}
+            Instr::Const { dest, .. } | Instr::Value { dest, .. } => {!delete_set.contains(dest)}
             _ => true
         }
     });

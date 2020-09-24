@@ -1,0 +1,1 @@
+command = "(bril2json < {filename}) | cargo run -- -o l_tdce | bril2txt"

@@ -1,0 +1,8 @@
+@main {
+  ten: int = const 10;
+  meaningless_add: int = add ten ten;
+  print ten;
+  jmp .done;
+.done:
+  print v;
+}

@@ -1,5 +1,6 @@
 use serde::{self, Deserialize, Serialize};
 use super::functions::{CFGFunction, Function};
+use crate::config::ConfigOptions;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Program {
@@ -11,9 +12,9 @@ pub struct CFGProgram {
 }
 
 impl Program {
-    pub fn determine_cfg(self) -> CFGProgram {
+    pub fn determine_cfg(self, confs: &ConfigOptions) -> CFGProgram {
         CFGProgram {
-            functions: self.functions.into_iter().map(|f| f.make_cfg()).collect()
+            functions: self.functions.into_iter().map(|f| f.make_cfg(confs)).collect()
         }
     }
 

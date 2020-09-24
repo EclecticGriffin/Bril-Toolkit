@@ -1,0 +1,26 @@
+@main {
+  ten: int = const 10;
+  meaningless_add: int = add ten ten;
+  print ten;
+  jmp .done;
+.verylongblock:
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+  meaningless_add: int = add meaningless_add meaningless_add;
+.done:
+  print v;
+}

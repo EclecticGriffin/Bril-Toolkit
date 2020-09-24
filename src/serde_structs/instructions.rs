@@ -68,7 +68,7 @@ impl Instr {
 
     pub fn extract_label(&self) -> Option<Label> {
         if let Instr::Label {label} = &self {
-            Some(label.clone())
+            Some(*label)
         } else {
             None
         }
