@@ -66,10 +66,9 @@ pub fn trivial_local_dce(instrs: Vec<Instr>) -> Vec<Instr> {
 pub fn trivial_global_dce(nodes: &mut Vec<Instr>) {
     let mut repeat = true;
 
+    while repeat {
     let mut used = HashSet::<Var>::new();
     let mut defined = HashSet::<Var>::new();
-
-    while repeat {
 
     for instr in nodes.iter() {
         match instr {

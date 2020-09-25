@@ -1,0 +1,25 @@
+#ARGS: 34534554
+@main(input: int) {
+
+  num1: int = const 715;
+  num2: int = const 413;
+
+  greater: bool = lt num1 num2; #false
+
+  unknown: bool = lt input num1;
+
+  a: bool = const false;
+  b: bool = const true;
+
+  d: bool = not a;
+  e: bool = not d;
+
+  f: bool = or a b;
+
+  g: bool = and d e;
+
+  c: bool = and f g;
+  c: bool = and c greater;
+  c: bool = and c unknown;
+  print c;
+}

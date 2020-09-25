@@ -7,7 +7,7 @@ use std::process::exit;
 use std::collections::HashMap;
 use serde_structs::structs::Program;
 use clap::{Arg, App, SubCommand};
-
+use config::{ConfigOptions};
 
 
 
@@ -15,6 +15,7 @@ fn get_stdin() -> String {
     let stdin = io::stdin();
     let mut buffer = String::new();
     let mut handle = stdin.lock();
+
 
     match handle.read_to_string(&mut buffer) {
         Ok(_) => {}
@@ -24,6 +25,62 @@ fn get_stdin() -> String {
         }
     }
     buffer
+}
+
+fn apply_transformations(mut prog: Program, conf: ConfigOptions) -> Program {
+
+    if conf.g_tdce {
+        // eprintln!("Applying trivial global dce");
+        for fun in prog.functions.iter_mut() {
+            fun.g_tcde()
+        }
+    }
+
+    if conf.lvn.run_lvn() || conf.l_tdce || conf.orphan_block {
+        let mut cfg = prog.determine_cfg();
+        // for fun in cfg.functions.iter() {
+        //     eprintln!("{:?}", fun)
+        // }
+        // eprintln!("\n\n\n\n\n");
+        if conf.orphan_block {
+        // eprintln!("Applying orphan block removal");
+            for fun in cfg.functions.iter_mut() {
+                fun.drop_orphan_blocks()
+            }
+        }
+
+        if conf.l_tdce {
+        // eprintln!("Applying trivial local dce");
+            for fun in cfg.functions.iter_mut() {
+                fun.apply_basic_dce()
+            }
+        }
+
+        if conf.lvn.run_solo() {
+        // eprintln!("Applying lvn solo");
+            for fun in cfg.functions.iter_mut() {
+                fun.apply_lvn()
+            }
+        }
+
+        if conf.lvn.run_normal() {
+        // eprintln!("Applying lvn normal");
+            for fun in cfg.functions.iter_mut() {
+                fun.apply_lvn();
+                fun.apply_basic_dce()
+            }
+        }
+
+        prog = cfg.make_serializeable()
+    }
+
+    if conf.lvn.run_normal() {
+        for fun in prog.functions.iter_mut() {
+            fun.g_tcde()
+        }
+    }
+
+    prog
 }
 
 fn main() {
@@ -40,6 +97,7 @@ fn main() {
 
     let optimizations = matches.values_of("optimizations");
 
+
     let buffer = get_stdin();
 
 
@@ -51,9 +109,11 @@ fn main() {
 
     let confs = config::ConfigOptions::new(optimizations.unwrap());
 
-    let v: Program = serde_json::from_str(&buffer).unwrap();
-    let v = v.determine_cfg(&confs);
+    let mut prog: Program = serde_json::from_str(&buffer).unwrap();
 
-    let v = v.make_serializeable();
-    println!("{}", serde_json::to_string_pretty(&v).ok().unwrap_or_default());
+
+    prog = apply_transformations(prog, confs);
+
+
+    println!("{}", serde_json::to_string_pretty(&prog).ok().unwrap_or_default());
 }

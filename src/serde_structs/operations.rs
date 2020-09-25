@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use serde::{self, Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Op {
     Const,
@@ -53,6 +53,14 @@ impl Op {
         match self {
             Op::Jmp | Op::Br | Op::Ret => true,
             _ => false,
+        }
+    }
+
+    pub fn is_commutative(&self) -> bool {
+        match self {
+            Op::Add | Op::Mul | Op::Eq | Op::And | Op::Or => true,
+            Op::FAdd | Op::FMul | Op::FEq => true,
+            _ => false
         }
     }
 }

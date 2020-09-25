@@ -12,9 +12,9 @@ pub struct CFGProgram {
 }
 
 impl Program {
-    pub fn determine_cfg(self, confs: &ConfigOptions) -> CFGProgram {
+    pub fn determine_cfg(self) -> CFGProgram {
         CFGProgram {
-            functions: self.functions.into_iter().map(|f| f.make_cfg(confs)).collect()
+            functions: self.functions.into_iter().map(|f| f.make_cfg()).collect()
         }
     }
 

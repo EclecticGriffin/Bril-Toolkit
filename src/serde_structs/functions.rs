@@ -7,6 +7,7 @@ use super::super::transformers::cfg::Node;
 use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_blocks, construct_cfg_nodes};
 use super::super::transformers::orphan::remove_inaccessible_blocks;
 use super::super::transformers::dce::{trivial_global_dce,local_dce};
+use super::super::transformers::lvn::run_lvn;
 use crate::config::ConfigOptions;
 use std::rc::Rc;
 
@@ -37,30 +38,18 @@ impl Function {
         trivial_global_dce(&mut self.instrs)
     }
 
-    pub fn make_cfg(mut self, confs: &ConfigOptions) -> CFGFunction {
-        if confs.g_tdce {
-            self.g_tcde();
-        }
+    pub fn make_cfg(mut self) -> CFGFunction {
+
         let mut blocks = construct_cfg_nodes(construct_basic_blocks(self.instrs));
 
         connect_basic_blocks(&mut blocks);
 
-        let mut cfg = CFGFunction {
+        CFGFunction {
             name: self.name,
             args: self.args,
             r_type: self.r_type,
             blocks
-        };
-
-        if confs.l_tdce {
-            cfg.apply_basic_dce();
         }
-
-        if confs.orphan_block {
-            cfg.drop_orphan_blocks();
-        }
-
-        cfg
     }
 }
 
@@ -93,6 +82,13 @@ impl CFGFunction {
     pub fn apply_basic_dce(&mut self) {
         for block in self.blocks.iter_mut() {
             local_dce(block);
+        }
+    }
+    pub fn apply_lvn(&mut self) {
+        for blk in self.blocks.iter() {
+            let node = blk.as_ref();
+            let contents = &mut node.contents.borrow_mut().0;
+            run_lvn(contents)
         }
     }
 }

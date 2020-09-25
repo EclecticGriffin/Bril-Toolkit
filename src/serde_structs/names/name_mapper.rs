@@ -64,6 +64,12 @@ impl<'a> NameReader {
         let map = &*self.mapper.as_ref().lock().unwrap();
         map.get_string(name).clone()
     }
+
+    pub fn fresh(&self, base: &Name) -> Name {
+        let mut map = &mut *self.mapper.as_ref().lock().unwrap();
+        let str_form = map.get_string(base).clone();
+        map.gen_fresh_name(&str_form)
+    }
     // pub fn remove_and_return_string(&self, name: &Name) -> String {
     //     (*self.mapper.as_ref().lock().unwrap()).remove_and_return_string(name)
     // }
@@ -98,6 +104,16 @@ impl NameMapper {
         self.map.get_by_right(name).unwrap()
     }
 
+    fn gen_fresh_name(&mut self, base: &String) -> Name {
+        let mut counter = 1;
+        let mut fresh = format!("{}_{}", base, counter);
+        while self.map.contains_left(&fresh) {
+            counter += 1;
+            fresh = format!("{}_{}", base, counter);
+        };
+
+        self.get_name(fresh)
+    }
     // fn remove_and_return_string(&mut self, name: &Name) -> String {
     //     let (s, _n) = self.map.remove_by_right(name).unwrap();
     //     s
