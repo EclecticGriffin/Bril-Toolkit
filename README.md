@@ -4,7 +4,7 @@
 I've implemented LVN and Trivial DCE (local & global). I also added a number of
 extensions to LVN including copy propagation, algebraic identities, and a few
 other identities such as adding zero to an unknown value or multiplying an
-unknown value by one.
+unknown value by one. At the moment these extensions cannot be toggled off.
 
 I tested my lvn implementation on a small battery of bril program in the
 `lvn_bench` folder and used brench to both evaluate speed and check correctness.
