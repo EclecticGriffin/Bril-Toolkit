@@ -74,6 +74,7 @@ pub enum Link {
 pub struct Node {
     pub contents: RefCell<Block>,
     pub out: RefCell<Option<Link>>,
+    pub predecessors: RefCell<Vec<Weak<Node>>>
 }
 
 impl Node {
@@ -84,6 +85,7 @@ impl Node {
             Node {
                 contents: RefCell::new(input),
                 out: RefCell::new(None),
+                predecessors: RefCell::new(Vec::new())
             }
     }
 
@@ -158,6 +160,9 @@ fn connect_block(current: &Rc<Node>, node: &Rc<Node>, map: &LabelMap) {
             current
                 .out
                 .replace(Some(Link::Fallthrough(Rc::downgrade(node))));
+            let mut vec_cell = node.predecessors.borrow_mut();
+            vec_cell.push(Rc::downgrade(current));
+
             return;
         }
     };
@@ -171,6 +176,8 @@ fn connect_block(current: &Rc<Node>, node: &Rc<Node>, map: &LabelMap) {
                 )
             });
             current.out.replace(Some(Link::Jump(Rc::downgrade(target_ref))));
+            let mut vec_cell = target_ref.predecessors.borrow_mut();
+            vec_cell.push(Rc::downgrade(current));
         }
         Op::Br => {
             let true_label = &labels[0];
@@ -194,6 +201,11 @@ fn connect_block(current: &Rc<Node>, node: &Rc<Node>, map: &LabelMap) {
                 true_branch: Rc::downgrade(true_target),
                 false_branch: Rc::downgrade(false_target),
             }));
+            let mut vec_cell = true_target.predecessors.borrow_mut();
+            vec_cell.push(Rc::downgrade(current));
+
+            let mut vec_cell = false_target.predecessors.borrow_mut();
+            vec_cell.push(Rc::downgrade(current));
         }
         Op::Ret => {
             current.out.replace(Some(Link::Ret));
@@ -202,11 +214,13 @@ fn connect_block(current: &Rc<Node>, node: &Rc<Node>, map: &LabelMap) {
             current
                 .out
                 .replace(Some(Link::Fallthrough(Rc::downgrade(node))));
+            let mut vec_cell = node.predecessors.borrow_mut();
+            vec_cell.push(Rc::downgrade(current));
         }
     }
 }
 
-fn connect_terminal_block( last_block: &Node, map: &LabelMap) {
+fn connect_terminal_block( last_block: &Rc<Node>, map: &LabelMap) {
     let instrs = &last_block.contents.borrow();
     let last = instrs.last();
 
@@ -223,6 +237,8 @@ fn connect_terminal_block( last_block: &Node, map: &LabelMap) {
                 last_block
                     .out
                     .replace(Some(Link::Jump(Rc::downgrade(target_ref))));
+                    let mut vec_cell = target_ref.predecessors.borrow_mut();
+                    vec_cell.push(Rc::downgrade(last_block));
                 return;
             }
             Op::Br => {
@@ -247,6 +263,11 @@ fn connect_terminal_block( last_block: &Node, map: &LabelMap) {
                     true_branch: Rc::downgrade(true_target),
                     false_branch: Rc::downgrade(false_target),
                 }));
+                let mut vec_cell = true_target.predecessors.borrow_mut();
+                vec_cell.push(Rc::downgrade(last_block));
+
+                let mut vec_cell = false_target.predecessors.borrow_mut();
+                vec_cell.push(Rc::downgrade(last_block));
                 return;
             }
             Op::Ret => {
