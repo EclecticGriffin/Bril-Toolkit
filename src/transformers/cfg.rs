@@ -105,6 +105,22 @@ impl Node {
         self.contents.into_inner().make_serializeable()
     }
 
+    pub fn successor_count(&self) -> usize {
+        let out: &Option<Link> = &self.out.borrow();
+        match out {
+            Some(x) => {
+                match x {
+                    Link::Branch {..} => 2,
+                    Link::Exit => 0,
+                    Link::Jump {..} => 1,
+                    Link::Fallthrough {..} => 1,
+                    Link::Ret => 0,
+                }
+            }
+            None => 0
+        }
+    }
+
 }
 
 
