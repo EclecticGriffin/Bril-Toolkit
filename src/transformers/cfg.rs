@@ -74,7 +74,8 @@ pub enum Link {
 pub struct Node {
     pub contents: RefCell<Block>,
     pub out: RefCell<Option<Link>>,
-    pub predecessors: RefCell<Vec<Weak<Node>>>
+    pub predecessors: RefCell<Vec<Weak<Node>>>,
+    pub idx: RefCell<Option<usize>> // this is bad and I am bad
 }
 
 impl Node {
@@ -85,7 +86,8 @@ impl Node {
             Node {
                 contents: RefCell::new(input),
                 out: RefCell::new(None),
-                predecessors: RefCell::new(Vec::new())
+                predecessors: RefCell::new(Vec::new()),
+                idx: RefCell::new(None),
             }
     }
 

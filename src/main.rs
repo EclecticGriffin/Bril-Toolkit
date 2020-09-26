@@ -1,6 +1,7 @@
 mod serde_structs;
 mod transformers;
 mod config;
+mod analysis;
 
 use std::io::{self, Read};
 use std::process::exit;
