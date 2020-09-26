@@ -1,0 +1,20 @@
+@main {
+  a: int = const 4;
+  b: int = const 4;
+
+  doublea: int = call @double a;
+  doubleb: int = call @double a;
+
+  doublea_again: int = call @double a;
+
+
+  suma: int = add doublea doubleb;
+  sumb: int = add suma doublea_again;
+
+  print sumb;
+}
+
+@double(input: int): int {
+    double: int = add input input;
+    ret double;
+}
