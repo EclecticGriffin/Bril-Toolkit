@@ -142,6 +142,7 @@ impl PartialEq for Value {
              }
 
               // Currently not safe to assume fns are pure without more info
+              // same is true of unknown values
             _ => false
         }
     }
