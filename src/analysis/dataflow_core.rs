@@ -69,7 +69,6 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
         let mut worklist: Vec<usize> = (0..analysis_nodes.len()).collect();
 
         while let Some(block_idx) = worklist.pop() {
-            println!("{:?} - {}", worklist, block_idx);
             let old: D = if let Direction::Forward = direction {
                 std::mem::replace(&mut analysis_nodes[block_idx].out_data, initial_value.clone())
             } else {
@@ -105,7 +104,6 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
             let updates_required = if let Direction::Forward = direction {
                 analysis_nodes[block_idx].out_data != old
             } else {
-                println!("old {:?}   new {:?}", old, analysis_nodes[block_idx].in_data );
                 analysis_nodes[block_idx].in_data != old
             };
 

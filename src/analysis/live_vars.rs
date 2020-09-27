@@ -9,7 +9,6 @@ fn transfer(input: &Data, instrs: &Block, _idx: usize) -> Data {
     let mut killed = Data::new();
 
     for instr in instrs.0.iter() {
-        println!("{}", instr);
         match instr {
             Instr::Const { dest, ..} => {
                 killed.insert(*dest);
