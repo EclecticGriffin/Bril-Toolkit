@@ -1,8 +1,9 @@
 use std::fmt::{self, Display};
 use serde::{self, Deserialize, Serialize};
 use super::names::{FnName, namer, Var};
-use super::basic_types::Type;
+use super::basic_types::{Type, Literal};
 use super::instructions::Instr;
+use super::operations::Op;
 use super::super::transformers::cfg::Node;
 use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_blocks, construct_cfg_nodes};
 use super::super::transformers::orphan::remove_inaccessible_blocks;
@@ -14,9 +15,22 @@ use crate::analysis;
 use std::mem::replace;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FnHeaders {
-    name: Var,
+    pub name: Var,
     #[serde(rename = "type")]
     r_type: Type,
+}
+
+impl FnHeaders {
+    // Only should be used for dataflow analysis
+    pub fn generate_dummy_instrs(&self) -> Instr {
+        Instr::Const { op: Op::Const, dest: self.name, r_type: self.r_type.clone(),
+                value: match self.r_type {
+                    Type::Int => {Literal::Int(0)}
+                    Type::Bool => {Literal::Bool(false)}
+                    Type::Ptr(_) => {todo!()}
+                    Type::Float => {Literal::Float(0.0)}
+                }}
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -93,20 +107,32 @@ impl CFGFunction {
     }
 
     pub fn reaching_defns(&self) {
-        let analysis_nodes = analysis::reaching_definitions(&self.blocks);
+        let analysis_nodes = analysis::reaching_definitions(&self.blocks, &self.args);
 
         println!("\n\nRunning reaching definitions analysis on {}\n", self.name);
         for (index, node) in analysis_nodes.into_iter().enumerate() {
-            println!("Block {} [{}]", index, self.blocks[index].contents.borrow());
-            print!("Input: ");
-            for var in node.in_data.iter() {
-                print!("{} ", var);
+
+            if index == 0 {
+                println!("Function start: ");
+                print!(" Input: ");
+                for var in node.out_data.iter() {
+                    print!("{} ", var);
+                }
+                println!("\n")
+            } else {
+                println!("Block {} [{}]", index, self.blocks[index - 1].contents.borrow());
+                print!(" Input: ");
+                for var in node.in_data.iter() {
+                    print!("{} ", var);
+                }
+                print!("\n Output: ");
+                for var in node.out_data.iter() {
+                    print!("{} ", var);
+                }
+                println!("\n")
             }
-            print!("\nOutput: ");
-            for var in node.out_data.iter() {
-                print!("{} ", var);
-            }
-            print!("\n\n")
+
+
         }
     }
 }

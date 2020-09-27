@@ -14,5 +14,5 @@ pub mod structs {
     pub use super::program::{Program, CFGProgram};
     pub use super::instructions::Instr;
     pub use super::operations::Op;
-    pub use super::functions::{CFGFunction, Function};
+    pub use super::functions::{CFGFunction, Function, FnHeaders};
 }

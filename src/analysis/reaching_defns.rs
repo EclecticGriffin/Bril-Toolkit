@@ -1,9 +1,11 @@
 use super::prelude::*;
 use std::collections::HashSet;
+use std::cell::RefCell;
+use super::super::transformers::cfg::Link;
 
 type Data = HashSet<VarDef>;
 
-#[derive(Hash, Clone, Eq, PartialEq)]
+#[derive(Hash, Clone, Eq, PartialEq, Debug)]
 pub struct VarDef(Var, usize);
 
 impl Display for VarDef {
@@ -37,6 +39,23 @@ fn transfer(input: &Data, instrs: &Block, idx: usize) -> Data {
     input.union(&out).cloned().collect()
 }
 
-pub fn reaching_definitions(nodes: &[Rc<Node>]) -> Vec<AnalysisNode<Data>> {
-    worklist_solver(nodes, Data::new(), transfer, merge, Direction::Forward)
+pub fn reaching_definitions(nodes: &[Rc<Node>], initial: &[FnHeaders] ) -> Vec<AnalysisNode<Data>> {
+
+
+    let fake_node = Node {
+        contents: RefCell::new(Block(initial.iter().map(|x| x.generate_dummy_instrs()).collect())),
+        out: RefCell::new(Some(Link::Fallthrough(Rc::downgrade(&nodes[0])))),
+        predecessors: RefCell::new(Vec::new()),
+        idx: RefCell::new(None),
+    };
+
+    let mut input_nodes = Vec::<Rc<Node>>::new();
+
+    input_nodes.push(Rc::new(fake_node));
+    for node in nodes {
+        input_nodes.push(node.clone())
+    }
+
+
+    worklist_solver(&input_nodes, Data::new(), transfer, merge, Direction::Forward)
 }

@@ -1,6 +1,8 @@
 use crate::transformers::cfg::{Node, Block, Link};
 use std::rc::Rc;
+use std::fmt::Debug;
 
+#[derive(Debug)]
 pub struct AnalysisNode<D> {
     pub in_data: D,
     pub out_data: D,
@@ -16,7 +18,7 @@ pub enum Direction {
 
 pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_fn: T,
                             merge_fn: M, direction: Direction) -> Vec<AnalysisNode<D>>
-    where T:Fn(&D, &Block, usize) -> D, M:Fn(Vec<&D>) -> D, D: Clone + PartialEq {
+    where T:Fn(&D, &Block, usize) -> D, M:Fn(Vec<&D>) -> D, D: Clone + PartialEq + Debug {
         let mut analysis_nodes = Vec::<AnalysisNode<D>>::new();
 
         for (idx, node) in nodes.iter().enumerate() {
@@ -37,7 +39,6 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
                 let num = upgraded.idx.borrow();
                 num.unwrap()
             }).collect();
-
             analysis_nodes[idx].predecessors = preds;
 
             let out = node.out.borrow();
@@ -74,7 +75,7 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
                 std::mem::replace(&mut analysis_nodes[block_idx].in_data, initial_value.clone())
             };
 
-            let merge_list: Vec<&D> = if let Direction::Forward = direction {
+            let mut merge_list: Vec<&D> = if let Direction::Forward = direction {
                 analysis_nodes[block_idx].predecessors.iter().map(|x| -> &D {
                     &analysis_nodes[*x].out_data
                 }).collect()
