@@ -75,11 +75,11 @@ impl Instr {
     }
 }
 
-impl Label {
-    pub fn make_instr(self) -> Instr {
-        Instr::Label {label: self}
-    }
-}
+// impl Label {
+//     pub fn make_instr(self) -> Instr {
+//         Instr::Label {label: self}
+//     }
+// }
 
 impl Display for Instr {
     fn fmt(&self, f: & mut fmt::Formatter<'_>) -> fmt::Result {

@@ -1,14 +1,12 @@
 mod serde_structs;
 mod transformers;
-mod config;
 mod analysis;
 
 use std::io::{self, Read};
 use std::process::exit;
-use std::collections::HashMap;
-use serde_structs::structs::Program;
+use serde_structs::structs::{Program, CFGFunction};
 use clap::{Arg, App, SubCommand};
-use config::{ConfigOptions};
+use transformers::config::ConfigOptions;
 
 
 
@@ -88,33 +86,76 @@ fn main() {
     let matches = App::new("Bril Toolkit").version("0.1")
                     .author("Griffin Berlstein <griffin@berlste.in>")
                     .about("A toolkit for bril transformations")
-                    .arg(Arg::with_name("optimizations")
-                        .short("o")
-                        .long("--optimizations")
-                        .multiple(true)
-                        .takes_value(true)
-                        .possible_values(&config::allowed_values)
-                    ).get_matches();
+                    .subcommand(
+                    SubCommand::with_name("transform")
+                                .version("0.1")
+                                .author("Griffin Berlstein <griffin@berlste.in>")
+                                .about("Apply transformations to a bril program")
+                                .arg(Arg::with_name("optimizations")
+                                .short("o")
+                                .long("optimizations")
+                                .multiple(true)
+                                .takes_value(true)
+                                .possible_values(&transformers::config::ALLOWED_VALUES)
+                    ))
+                    .subcommand(
+                        SubCommand::with_name("analyze")
+                                .version("0.1")
+                                .author("Griffin Berlstein <griffin@berlste.in>")
+                                .about("Perform dataflow analyses")
+                                .arg(Arg::with_name("analysis")
+                                     .short("a")
+                                     .long("analysis")
+                                     .index(1)
+                                     .takes_value(true)
+                                     .possible_values(&analysis::ALLOWED_VALUES)
+                                     .required(true)
+                    ))
+                    .get_matches();
 
-    let optimizations = matches.values_of("optimizations");
 
 
     let buffer = get_stdin();
 
+    match matches.subcommand() {
+        ("transform", Some(sub_m)) => {
+            let optimizations = sub_m.values_of("optimizations");
 
-    // If there are no optimizations just return what was given
-    if let None = optimizations {
-        println!("{}", buffer);
-        exit(0)
+            // If there are no optimizations just return what was given
+            if let None = optimizations {
+                println!("{}", buffer);
+                exit(0)
+            }
+
+            let confs = ConfigOptions::new(optimizations.unwrap());
+
+            let mut prog: Program = serde_json::from_str(&buffer).unwrap();
+
+            prog = apply_transformations(prog, confs);
+            println!("{}", serde_json::to_string_pretty(&prog).ok().unwrap_or_default());
+            }
+        ("analyze", Some(sub_m)) => {
+            let func = match sub_m.value_of("analysis") {
+                Some("reaching_defns") => {
+                    CFGFunction::reaching_defns
+                }
+                _ => {exit(1)}
+            };
+
+            let prog: Program = serde_json::from_str(&buffer).unwrap();
+
+            let cfg = prog.determine_cfg();
+
+
+            for cfg_fun in cfg.functions.iter(){
+                func(cfg_fun)
+            }
+
+        }
+        _ => {}
     }
 
-    let confs = config::ConfigOptions::new(optimizations.unwrap());
-
-    let mut prog: Program = serde_json::from_str(&buffer).unwrap();
 
 
-    prog = apply_transformations(prog, confs);
 
-
-    println!("{}", serde_json::to_string_pretty(&prog).ok().unwrap_or_default());
 }

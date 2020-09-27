@@ -233,7 +233,7 @@ impl Table {
         None
     }
 
-    fn get_row_value<'a>(&'a self, idx: LNum) -> &'a Value {
+    fn get_row_value(&self, idx: LNum) -> &Value {
         &self.rows[idx].value
     }
 
@@ -281,7 +281,7 @@ impl Table {
             Instr::Const { dest, ..} => {
                 if let Some(v) = v {
                     let linenum = self.lookup_value(&v);
-                    if let Some((num, var)) = linenum {
+                    if let Some((num, _var)) = linenum {
                         // eprintln!("Value for {:?} is already present as {:?}", dest, var);
                         self.set_env(dest, num);
                     } else {
@@ -295,7 +295,7 @@ impl Table {
 
                     let linenum = self.lookup_value(&v);
 
-                    if let Some((num, var)) = linenum {
+                    if let Some((num, _var)) = linenum {
                         // eprintln!("Value for {:?} is already present as {:?}", dest, var);
                         self.set_env(dest, num);
                     } else {
@@ -352,7 +352,7 @@ pub fn run_lvn(instrs: &mut Vec<Instr>) {
 
 
 fn force_unique_names(instrs: &mut Vec<Instr>) {
-    let mut name_reader = namer();
+    let name_reader = namer();
     let mut new_mapping = HashMap::<Var, Vec<(RangeInclusive<usize>, Var)>>::new();
     let mut prev_defn = HashMap::<Var, usize>::new();
 
@@ -389,7 +389,7 @@ fn force_unique_names(instrs: &mut Vec<Instr>) {
                     let remappings: Vec<&(RangeInclusive<usize>, Var)> = new_mapping.get(dest).unwrap()
                         .iter().filter(|&(x, ..)| {*x.start() == idx}).collect();
                     if remappings.len() == 1 {
-                    let (range, new_name) = remappings[0];
+                    let (_range, new_name) = remappings[0];
                         *dest = *new_name;
                     }
                 }
@@ -421,7 +421,7 @@ fn force_unique_names(instrs: &mut Vec<Instr>) {
 
                     // eprintln!("On line {}, there are {} mappings", idx, remappings.len());
                     if remappings.len() == 1 {
-                    let (range, new_name) = remappings[0];
+                    let (_range, new_name) = remappings[0];
                     *dest = *new_name;
                     }
                 }

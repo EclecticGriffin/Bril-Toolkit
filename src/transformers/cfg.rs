@@ -48,6 +48,19 @@ impl Block {
 
 }
 
+impl Display for Block {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.label() {
+            Some(l) => {
+                write!(f, "{}", l)
+            }
+            None => {
+                write!(f, "unlabeled")
+            }
+        }
+    }
+}
+
 impl IntoIterator for Block {
     type Item = Instr;
 

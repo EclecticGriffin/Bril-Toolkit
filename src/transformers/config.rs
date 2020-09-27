@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use clap::Values;
-pub const allowed_values: &[&str] = &["all", "g_tdce", "l_tdce", "lvn", "orph", "solo_lvn"];
+pub const ALLOWED_VALUES: &[&str] = &["all", "g_tdce", "l_tdce", "lvn", "orph", "solo_lvn"];
 
 pub enum LVNChoice {
     Solo,
@@ -18,7 +18,7 @@ impl LVNChoice {
     pub fn run_solo(&self) -> bool {
         match self {
             LVNChoice::Solo => true,
-            LVNChoice::Bool(b) => false
+            LVNChoice::Bool(_) => false
         }
     }
 
@@ -45,11 +45,11 @@ impl ConfigOptions {
         }
 
         if hash.contains_key("all") {
-            for key in allowed_values {
+            for key in ALLOWED_VALUES {
                 hash.insert(&key, true);
             }
         } else {
-            for key in allowed_values {
+            for key in ALLOWED_VALUES {
                 if !hash.contains_key(key) {
                     hash.insert(&key, false);
                 }

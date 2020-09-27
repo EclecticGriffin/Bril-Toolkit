@@ -1,12 +1,10 @@
 use crate::transformers::cfg::{Node, Block, Link};
-use crate::serde_structs::structs::Instr;
 use std::rc::Rc;
 
 pub struct AnalysisNode<D> {
     pub in_data: D,
     pub out_data: D,
     pub program_node: Rc<Node>,
-    node_index: usize,
     predecessors: Vec<usize>,
     successors: Vec<usize>
 }
@@ -16,7 +14,7 @@ pub enum Direction {
     Backward
 }
 
-pub fn worklist_solver<D, T, M>(nodes: &Vec<Rc<Node>>, inital_value: D, transfer_fn: T,
+pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_fn: T,
                             merge_fn: M, direction: Direction) -> Vec<AnalysisNode<D>>
     where T:Fn(&D, &Block, usize) -> D, M:Fn(Vec<&D>) -> D, D: Clone + PartialEq {
         let mut analysis_nodes = Vec::<AnalysisNode<D>>::new();
@@ -27,10 +25,9 @@ pub fn worklist_solver<D, T, M>(nodes: &Vec<Rc<Node>>, inital_value: D, transfer
 
         for (idx, node) in nodes.iter().enumerate() {
             analysis_nodes.push(AnalysisNode {
-                in_data: inital_value.clone(),
-                out_data: inital_value.clone(),
+                in_data: initial_value.clone(),
+                out_data: initial_value.clone(),
                 program_node: Rc::clone(node),
-                node_index: idx,
                 predecessors: Vec::new(),
                 successors: Vec::new()
             });
@@ -72,9 +69,9 @@ pub fn worklist_solver<D, T, M>(nodes: &Vec<Rc<Node>>, inital_value: D, transfer
 
         while let Some(block_idx) = worklist.pop() {
             let old: D = if let Direction::Forward = direction {
-                std::mem::replace(&mut analysis_nodes[block_idx].out_data, inital_value.clone())
+                std::mem::replace(&mut analysis_nodes[block_idx].out_data, initial_value.clone())
             } else {
-                std::mem::replace(&mut analysis_nodes[block_idx].in_data, inital_value.clone())
+                std::mem::replace(&mut analysis_nodes[block_idx].in_data, initial_value.clone())
             };
 
             let merge_list: Vec<&D> = if let Direction::Forward = direction {
@@ -104,9 +101,9 @@ pub fn worklist_solver<D, T, M>(nodes: &Vec<Rc<Node>>, inital_value: D, transfer
             }
 
             let updates_required = if let Direction::Forward = direction {
-                analysis_nodes[block_idx].out_data == old
+                analysis_nodes[block_idx].out_data != old
             } else {
-                analysis_nodes[block_idx].in_data == old
+                analysis_nodes[block_idx].in_data != old
             };
 
             if updates_required {

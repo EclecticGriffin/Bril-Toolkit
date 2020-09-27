@@ -1,6 +1,5 @@
 use serde::{self, Deserialize, Serialize};
 use super::functions::{CFGFunction, Function};
-use crate::config::ConfigOptions;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Program {

@@ -6,4 +6,9 @@ mod prelude {
     pub use crate::transformers::cfg::{Node, Block};
     pub use crate::serde_structs::structs::{Instr, Var};
     pub use std::rc::Rc;
+    pub use std::fmt::Display;
 }
+
+pub const ALLOWED_VALUES: &[&str] = &["reaching_defns"];
+
+pub use reaching_defns::reaching_definitions;

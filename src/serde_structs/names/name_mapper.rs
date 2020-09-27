@@ -4,10 +4,16 @@ use std::mem::transmute;
 
 use serde::de::{self, Deserializer, Deserialize, Visitor};
 use serde::{Serialize, Serializer};
-use std::fmt;
+use std::fmt::{self, Display};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct Name(u64);
+
+impl Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", namer().get_string(&self))
+    }
+}
 
 impl<'de> Deserialize<'de> for Name {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -66,7 +72,7 @@ impl<'a> NameReader {
     }
 
     pub fn fresh(&self, base: &Name) -> Name {
-        let mut map = &mut *self.mapper.as_ref().lock().unwrap();
+        let map = &mut *self.mapper.as_ref().lock().unwrap();
         let str_form = map.get_string(base).clone();
         map.gen_fresh_name(&str_form)
     }
@@ -104,7 +110,7 @@ impl NameMapper {
         self.map.get_by_right(name).unwrap()
     }
 
-    fn gen_fresh_name(&mut self, base: &String) -> Name {
+    fn gen_fresh_name(&mut self, base: &str) -> Name {
         let mut counter = 1;
         let mut fresh = format!("{}_{}", base, counter);
         while self.map.contains_left(&fresh) {
