@@ -1,1 +1,1 @@
-command = "(bril2json < {filename}) | cargo run -- -o orph | bril2txt"
+command = "(bril2json < {filename}) | cargo run -- transform -o orph | bril2txt"

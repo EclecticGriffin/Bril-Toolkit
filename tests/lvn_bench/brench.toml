@@ -10,20 +10,20 @@ pipeline = [
 [runs.tdce]
 pipeline = [
     "bril2json",
-    "cargo run -- -o l_tdce g_tdce",
+    "cargo run -- transform -o l_tdce g_tdce",
     "brili -p {args}",
 ]
 
 [runs.lvn]
 pipeline = [
     "bril2json",
-    "cargo run -- -o lvn",
+    "cargo run -- transform -o lvn",
     "brili -p {args}",
 ]
 
 [runs.solo_lvn]
 pipeline = [
     "bril2json",
-    "cargo run -- -o solo_lvn",
+    "cargo run -- transform -o solo_lvn",
     "brili -p {args}",
 ]
