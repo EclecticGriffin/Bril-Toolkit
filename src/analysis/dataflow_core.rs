@@ -69,13 +69,14 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
         let mut worklist: Vec<usize> = (0..analysis_nodes.len()).collect();
 
         while let Some(block_idx) = worklist.pop() {
+            println!("{:?} - {}", worklist, block_idx);
             let old: D = if let Direction::Forward = direction {
                 std::mem::replace(&mut analysis_nodes[block_idx].out_data, initial_value.clone())
             } else {
                 std::mem::replace(&mut analysis_nodes[block_idx].in_data, initial_value.clone())
             };
 
-            let mut merge_list: Vec<&D> = if let Direction::Forward = direction {
+            let merge_list: Vec<&D> = if let Direction::Forward = direction {
                 analysis_nodes[block_idx].predecessors.iter().map(|x| -> &D {
                     &analysis_nodes[*x].out_data
                 }).collect()
@@ -104,17 +105,22 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
             let updates_required = if let Direction::Forward = direction {
                 analysis_nodes[block_idx].out_data != old
             } else {
+                println!("old {:?}   new {:?}", old, analysis_nodes[block_idx].in_data );
                 analysis_nodes[block_idx].in_data != old
             };
 
             if updates_required {
                 if let Direction::Forward = direction {
                     for index in analysis_nodes[block_idx].successors.iter() {
-                        worklist.push(*index)
+                        if !worklist.contains(index) {
+                            worklist.push(*index)
+                        }
                     }
                 } else {
                     for index in analysis_nodes[block_idx].predecessors.iter() {
-                        worklist.push(*index)
+                        if !worklist.contains(index) {
+                            worklist.push(*index)
+                        }
                     }
                 }
             }

@@ -135,6 +135,25 @@ impl CFGFunction {
 
         }
     }
+
+    pub fn live_vars(&self) {
+        let analysis_nodes = analysis::live_variables(&self.blocks);
+
+        println!("\n\nRunning live variable analysis on {}\n", self.name);
+        for (index, node) in analysis_nodes.into_iter().enumerate() {
+
+            println!("Block {} [{}]", index, self.blocks[index].contents.borrow());
+            print!(" Input: ");
+            for var in node.in_data.iter() {
+                print!("{} ", var);
+            }
+            print!("\n Output: ");
+            for var in node.out_data.iter() {
+                print!("{} ", var);
+            }
+            println!("\n")
+        }
+    }
 }
 
 impl Display for CFGFunction {

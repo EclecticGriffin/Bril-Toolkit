@@ -7,7 +7,7 @@ use serde::{Serialize, Serializer};
 use std::fmt::{self, Display};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct Name(u64);
+pub struct Name(pub u64);
 
 impl Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

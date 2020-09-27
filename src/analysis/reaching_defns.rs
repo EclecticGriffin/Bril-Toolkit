@@ -1,4 +1,5 @@
 use super::prelude::*;
+use super::dehydrated::set_union;
 use std::collections::HashSet;
 use std::cell::RefCell;
 use super::super::transformers::cfg::Link;
@@ -15,13 +16,6 @@ impl Display for VarDef {
 }
 
 
-fn merge(input: Vec<&Data>) -> Data {
-    let mut out = Data::new();
-    for set in input {
-        out = out.union(set).cloned().collect()
-    }
-    out
-}
 
 fn transfer(input: &Data, instrs: &Block, idx: usize) -> Data {
     let mut out = Data::new();
@@ -57,5 +51,5 @@ pub fn reaching_definitions(nodes: &[Rc<Node>], initial: &[FnHeaders] ) -> Vec<A
     }
 
 
-    worklist_solver(&input_nodes, Data::new(), transfer, merge, Direction::Forward)
+    worklist_solver(&input_nodes, Data::new(), transfer, set_union, Direction::Forward)
 }

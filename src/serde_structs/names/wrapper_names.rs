@@ -14,7 +14,7 @@ pub struct FnName(pub Name);
 
 impl Debug for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<Var: {} [{}]>", namer().get_string(&self.0), &self.0)
+        write!(f, "<Var: {} [{}]>", namer().get_string(&self.0), &(self.0).0)
     }
 }
 

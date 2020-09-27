@@ -139,6 +139,9 @@ fn main() {
                 Some("reaching_defns") => {
                     CFGFunction::reaching_defns
                 }
+                Some("live") => {
+                    CFGFunction::live_vars
+                }
                 _ => {exit(1)}
             };
 

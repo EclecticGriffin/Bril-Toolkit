@@ -1,5 +1,7 @@
 mod dataflow_core;
 mod reaching_defns;
+mod live_vars;
+mod cprop;
 
 mod prelude {
     pub use super::dataflow_core::{worklist_solver, AnalysisNode, Direction};
@@ -9,6 +11,21 @@ mod prelude {
     pub use std::fmt::Display;
 }
 
-pub const ALLOWED_VALUES: &[&str] = &["reaching_defns"];
+pub const ALLOWED_VALUES: &[&str] = &["reaching_defns", "live"];
 
 pub use reaching_defns::reaching_definitions;
+pub use live_vars::live_variables;
+
+// just add types!
+pub mod dehydrated {
+    use std::hash::Hash;
+    use std::collections::HashSet;
+
+    pub fn set_union<T: Eq + Hash + Clone>(input: Vec<&HashSet<T>>) -> HashSet<T> {
+        let mut out = HashSet::new();
+        for set in input {
+            out = out.union(set).cloned().collect()
+        }
+        out
+    }
+}
