@@ -1,0 +1,20 @@
+
+
+Running live variable analysis on main
+
+Block 0 [unlabeled]
+ Input: cond
+ Output: a
+
+Block 1 [left]
+ Input: a
+ Output: a c
+
+Block 2 [right]
+ Input:
+ Output: a c
+
+Block 3 [end]
+ Input: a c
+ Output:
+

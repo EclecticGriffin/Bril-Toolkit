@@ -1,6 +1,6 @@
 mod dataflow_core;
-mod reaching_defns;
-mod live_vars;
+pub mod reaching_defns;
+pub mod live_vars;
 mod cprop;
 
 mod prelude {

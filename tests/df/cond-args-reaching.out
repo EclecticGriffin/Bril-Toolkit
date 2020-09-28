@@ -1,0 +1,23 @@
+
+
+Running reaching definitions analysis on main
+
+Function start:
+ Input: cond_0
+
+Block 1 [unlabeled]
+ Input: cond_0
+ Output: cond_0 a_1 b_1
+
+Block 2 [left]
+ Input: cond_0 a_1 b_1
+ Output: cond_0 a_1 b_1 b_2 c_2
+
+Block 3 [right]
+ Input: cond_0 a_1 b_1
+ Output: cond_0 a_1 a_3 b_1 c_3
+
+Block 4 [end]
+ Input: cond_0 a_1 a_3 b_1 b_2 c_2 c_3
+ Output: cond_0 a_1 a_3 b_1 b_2 c_2 c_3 d_4
+

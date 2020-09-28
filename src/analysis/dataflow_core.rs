@@ -1,6 +1,7 @@
 use crate::transformers::cfg::{Node, Block, Link};
 use std::rc::Rc;
 use std::fmt::Debug;
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct AnalysisNode<D> {
@@ -9,6 +10,18 @@ pub struct AnalysisNode<D> {
     pub program_node: Rc<Node>,
     predecessors: Vec<usize>,
     successors: Vec<usize>
+}
+
+// This is silly and used only to enforce a particular
+// print order for testing purposes
+impl<T: Clone> AnalysisNode<HashSet<T>> {
+    pub fn in_data_as_vec(&self) -> Vec<T>{
+        self.in_data.iter().cloned().collect()
+    }
+
+    pub fn out_data_as_vec(&self) -> Vec<T>{
+        self.out_data.iter().cloned().collect()
+    }
 }
 
 pub enum Direction {
@@ -110,15 +123,11 @@ pub fn worklist_solver<D, T, M>(nodes: &[Rc<Node>], initial_value: D, transfer_f
             if updates_required {
                 if let Direction::Forward = direction {
                     for index in analysis_nodes[block_idx].successors.iter() {
-                        if !worklist.contains(index) {
                             worklist.push(*index)
-                        }
                     }
                 } else {
                     for index in analysis_nodes[block_idx].predecessors.iter() {
-                        if !worklist.contains(index) {
                             worklist.push(*index)
-                        }
                     }
                 }
             }

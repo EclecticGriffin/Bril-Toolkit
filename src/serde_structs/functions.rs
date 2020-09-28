@@ -11,6 +11,7 @@ use super::super::transformers::dce::{trivial_global_dce,local_dce};
 use super::super::transformers::lvn::run_lvn;
 use std::rc::Rc;
 use crate::analysis;
+use crate::analysis::reaching_defns::VarDef;
 
 use std::mem::replace;
 #[derive(Serialize, Deserialize, Debug)]
@@ -111,23 +112,32 @@ impl CFGFunction {
 
         println!("\n\nRunning reaching definitions analysis on {}\n", self.name);
         for (index, node) in analysis_nodes.into_iter().enumerate() {
+            let mut out_vars = node.out_data_as_vec();
+            out_vars.sort_by(|x: &VarDef, y: &VarDef|  {
+                (x.0, x.1).cmp(&(y.0, y.1))
+            });
 
+            let mut in_vars = node.in_data_as_vec();
+            in_vars.sort_by(|x: &VarDef, y: &VarDef|  {
+                (x.0, x.1).cmp(&(y.0, y.1))
+            });
             if index == 0 {
-                println!("Function start: ");
-                print!(" Input: ");
-                for var in node.out_data.iter() {
-                    print!("{} ", var);
+                println!("Function start:");
+                print!(" Input:");
+
+                for var in out_vars  {
+                    print!(" {}", var);
                 }
                 println!("\n")
             } else {
                 println!("Block {} [{}]", index, self.blocks[index - 1].contents.borrow());
-                print!(" Input: ");
-                for var in node.in_data.iter() {
-                    print!("{} ", var);
+                print!(" Input:");
+                for var in in_vars {
+                    print!(" {}", var);
                 }
-                print!("\n Output: ");
-                for var in node.out_data.iter() {
-                    print!("{} ", var);
+                print!("\n Output:");
+                for var in out_vars {
+                    print!(" {}", var);
                 }
                 println!("\n")
             }
@@ -142,14 +152,23 @@ impl CFGFunction {
         println!("\n\nRunning live variable analysis on {}\n", self.name);
         for (index, node) in analysis_nodes.into_iter().enumerate() {
 
+            let mut out_vars = node.out_data_as_vec();
+            out_vars.sort_by(|x: &Var, y: &Var|  {
+                x.cmp(&y)
+            });
+
+            let mut in_vars = node.in_data_as_vec();
+            in_vars.sort_by(|x: &Var, y: &Var|  {
+                x.cmp(&y)
+            });
             println!("Block {} [{}]", index, self.blocks[index].contents.borrow());
-            print!(" Input: ");
-            for var in node.in_data.iter() {
-                print!("{} ", var);
+            print!(" Input:");
+            for var in in_vars {
+                print!(" {}", var);
             }
-            print!("\n Output: ");
-            for var in node.out_data.iter() {
-                print!("{} ", var);
+            print!("\n Output:");
+            for var in out_vars {
+                print!(" {}", var);
             }
             println!("\n")
         }

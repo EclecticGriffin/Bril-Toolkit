@@ -6,7 +6,7 @@ use serde::de::{self, Deserializer, Deserialize, Visitor};
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display};
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, Ord, PartialOrd)]
 pub struct Name(pub u64);
 
 impl Display for Name {

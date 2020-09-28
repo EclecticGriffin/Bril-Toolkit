@@ -1,0 +1,24 @@
+
+
+Running live variable analysis on main
+
+Block 0 [unlabeled]
+ Input:
+ Output: v
+
+Block 1 [unlabeled]
+ Input:
+ Output: v
+
+Block 2 [somewhere]
+ Input: v
+ Output: v
+
+Block 3 [nowhere]
+ Input: v
+ Output: v
+
+Block 4 [else]
+ Input: v
+ Output:
+

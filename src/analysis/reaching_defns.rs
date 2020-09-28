@@ -7,7 +7,7 @@ use super::super::transformers::cfg::Link;
 type Data = HashSet<VarDef>;
 
 #[derive(Hash, Clone, Eq, PartialEq, Debug)]
-pub struct VarDef(Var, usize);
+pub struct VarDef(pub Var, pub usize);
 
 impl Display for VarDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -44,12 +44,15 @@ pub fn reaching_definitions(nodes: &[Rc<Node>], initial: &[FnHeaders] ) -> Vec<A
     };
 
     let mut input_nodes = Vec::<Rc<Node>>::new();
-
     input_nodes.push(Rc::new(fake_node));
     for node in nodes {
         input_nodes.push(node.clone())
     }
 
+    {
+    let mut fall = input_nodes[1].predecessors.borrow_mut();
+    fall.push(Rc::downgrade(&input_nodes[0]));
+    }
 
     worklist_solver(&input_nodes, Data::new(), transfer, set_union, Direction::Forward)
 }

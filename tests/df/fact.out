@@ -1,0 +1,20 @@
+
+
+Running live variable analysis on main
+
+Block 0 [unlabeled]
+ Input:
+ Output: result i
+
+Block 1 [header]
+ Input: result i
+ Output: result i
+
+Block 2 [body]
+ Input: result i
+ Output: result i
+
+Block 3 [end]
+ Input: result
+ Output:
+

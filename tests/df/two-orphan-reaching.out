@@ -1,0 +1,27 @@
+
+
+Running reaching definitions analysis on main
+
+Function start:
+ Input:
+
+Block 1 [unlabeled]
+ Input:
+ Output: v_1
+
+Block 2 [unlabeled]
+ Input:
+ Output: v_2
+
+Block 3 [somewhere]
+ Input: v_2
+ Output: v_2
+
+Block 4 [nowhere]
+ Input: v_2
+ Output: v_2
+
+Block 5 [else]
+ Input: v_1 v_2
+ Output: v_1 v_2
+

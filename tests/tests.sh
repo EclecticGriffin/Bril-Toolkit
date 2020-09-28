@@ -1,4 +1,4 @@
-TURNT_TESTS=("global_dce" "local_dce" "lvn" "orphan")
+TURNT_TESTS=("global_dce" "local_dce" "lvn" "orphan" "df")
 BRENCH_TESTS=("lvn_bench")
 BRENCH_CONFIG_NAME="brench.toml"
 
