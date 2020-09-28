@@ -1,0 +1,8 @@
+# ARGS: lvn
+@main {
+  a: int = const 42;
+.lbl:
+  b: int = id a;
+  a: int = const 5;
+  print b;
+}
