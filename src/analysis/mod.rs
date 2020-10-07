@@ -28,4 +28,14 @@ pub mod dehydrated {
         }
         out
     }
+
+    pub fn set_intersection<T: Eq + Hash + Clone>(input: Vec<&HashSet<T>>) -> HashSet<T> {
+        let mut out = input[0].clone();
+        let mut iter = input.iter();
+        iter.next();
+        for &set in iter {
+            out = out.intersection(set).cloned().collect()
+        }
+        out
+    }
 }

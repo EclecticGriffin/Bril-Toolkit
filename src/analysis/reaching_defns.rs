@@ -3,6 +3,7 @@ use super::dehydrated::set_union;
 use std::collections::HashSet;
 use std::cell::RefCell;
 use super::super::transformers::cfg::Link;
+use crate::serde_structs::namer;
 
 type Data = HashSet<VarDef>;
 
@@ -36,12 +37,12 @@ fn transfer(input: &Data, instrs: &Block, idx: usize) -> Data {
 pub fn reaching_definitions(nodes: &[Rc<Node>], initial: &[FnHeaders] ) -> Vec<AnalysisNode<Data>> {
 
 
-    let fake_node = Node {
-        contents: RefCell::new(Block(initial.iter().map(|x| x.generate_dummy_instrs()).collect())),
-        out: RefCell::new(Some(Link::Fallthrough(Rc::downgrade(&nodes[0])))),
-        predecessors: RefCell::new(Vec::new()),
-        idx: RefCell::new(None),
-    };
+    let fake_node = Node::dummy_block(
+        RefCell::new(Block(initial.iter().map(|x| x.generate_dummy_instrs()).collect())),
+        RefCell::new(Some(Link::Fallthrough(Rc::downgrade(&nodes[0])))),
+        RefCell::new(Vec::new()),
+        RefCell::new(None),
+    );
 
     let mut input_nodes = Vec::<Rc<Node>>::new();
     input_nodes.push(Rc::new(fake_node));

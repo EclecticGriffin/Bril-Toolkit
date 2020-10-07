@@ -122,7 +122,7 @@ fn main() {
             let optimizations = sub_m.values_of("optimizations");
 
             // If there are no optimizations just return what was given
-            if let None = optimizations {
+            if optimizations.is_none() {
                 println!("{}", buffer);
                 exit(0)
             }

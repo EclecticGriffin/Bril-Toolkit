@@ -112,8 +112,31 @@ impl Node {
         Node::from_block(Block::new(input))
     }
 
+    pub fn dummy_block(
+        contents: RefCell<Block>,
+        out: RefCell<Option<Link>>,
+        predecessors: RefCell<Vec<Weak<Node>>>,
+        idx: RefCell<Option<usize>>) -> Self {
+
+        Node {
+            contents,
+            out,
+            predecessors,
+            idx,
+            label: namer().fresh_label()
+        }
+    }
+
     pub fn label(&self) -> Label{
         self.label
+    }
+
+    pub fn predecessor_labels(&self) -> Vec<Label> {
+        self.predecessors.borrow().iter().map(|x| Weak::upgrade(x).unwrap().label()).collect()
+    }
+
+    pub fn block_label(&self) -> Option<Label>{
+        self.contents.borrow().label()
     }
 
     pub fn is_labeled(&self) -> bool {
@@ -203,7 +226,7 @@ fn construct_label_lookup(blocks: &[Rc<Node>]) -> LabelMap {
     let mut map = LabelMap::new();
     for node in blocks.iter() {
         if node.is_labeled() {
-            map.insert(node.label().unwrap(), Rc::clone(node));
+            map.insert(node.block_label().unwrap(), Rc::clone(node));
         }
     }
     map
@@ -360,7 +383,7 @@ pub fn connect_basic_blocks(blocks: &mut Vec<Rc<Node>>) {
 
 impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(label) = &self.label() {
+        if let Some(label) = &self.block_label() {
             writeln!(f, "Block {}:", namer().get_string(&label.0))?;
         } else {
             writeln!(f, "Block (unlabeled):")?;
@@ -391,7 +414,7 @@ impl Display for Link {
             Link::Fallthrough(val) => {
                 let val = val.upgrade();
                 if let Some(val) = val {
-                    match val.label() {
+                    match val.block_label() {
                         Some(label) => {
                             write!(f, "<FALLTHROUGH: .{}>", namer.get_string(&label.0))
                         }
@@ -407,7 +430,7 @@ impl Display for Link {
             Link::Jump(val) => {
                 let val = val.upgrade();
                 if let Some(val) = val {
-                    if let  Some(label) = val.label() {
+                    if let Some(label) = val.block_label() {
                         write!(f, "<JUMP: .{}>", namer.get_string(&label.0))?
                     }
                     Ok(())
@@ -418,7 +441,7 @@ impl Display for Link {
             Link::Branch { true_branch, false_branch } => {
                 let val = true_branch.upgrade();
                 if let Some(val) = val {
-                    if let Some(label) = val.label() {
+                    if let Some(label) = val.block_label() {
                         write!(f, "<BR TRUE: .{}>", namer.get_string(&label.0))?;
                     }
                 } else {
@@ -428,7 +451,7 @@ impl Display for Link {
                 write!(f, " ")?;
                 let val = false_branch.upgrade();
                 if let Some(val) = val {
-                    if let Some(label) = val.label(){
+                    if let Some(label) = val.block_label(){
                         write!(f, "<BR FALSE: .{}>", namer.get_string(&label.0))
                     } else {
                         Ok(())
