@@ -5,6 +5,7 @@ use std::mem::transmute;
 use serde::de::{self, Deserializer, Deserialize, Visitor};
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display};
+use super::wrapper_names::Label;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, Ord, PartialOrd)]
 pub struct Name(pub u64);
@@ -75,6 +76,11 @@ impl<'a> NameReader {
         let map = &mut *self.mapper.as_ref().lock().unwrap();
         let str_form = map.get_string(base).clone();
         map.gen_fresh_name(&str_form)
+    }
+
+    pub fn fresh_label(&self) -> Label {
+        let map = &mut *self.mapper.as_ref().lock().unwrap();
+        Label(map.gen_fresh_name(&String::from("tmp_label")))
     }
     // pub fn remove_and_return_string(&self, name: &Name) -> String {
     //     (*self.mapper.as_ref().lock().unwrap()).remove_and_return_string(name)

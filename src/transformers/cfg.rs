@@ -88,7 +88,8 @@ pub struct Node {
     pub contents: RefCell<Block>,
     pub out: RefCell<Option<Link>>,
     pub predecessors: RefCell<Vec<Weak<Node>>>,
-    pub idx: RefCell<Option<usize>> // this is bad and I am bad
+    pub idx: RefCell<Option<usize>>, // this is bad and I am bad
+    label: Label
 }
 
 impl Node {
@@ -96,11 +97,14 @@ impl Node {
         if input.is_empty() {
             panic!("Tried to create an empty block????\n")
         }
+
+        let label = input.label().unwrap_or(namer().fresh_label());
             Node {
                 contents: RefCell::new(input),
                 out: RefCell::new(None),
                 predecessors: RefCell::new(Vec::new()),
                 idx: RefCell::new(None),
+                label
             }
     }
 
@@ -108,12 +112,12 @@ impl Node {
         Node::from_block(Block::new(input))
     }
 
-    pub fn label(&self) -> Option<Label>{
-        self.contents.borrow().label()
+    pub fn label(&self) -> Label{
+        self.label
     }
 
     pub fn is_labeled(&self) -> bool {
-        self.label().is_some()
+        self.contents.borrow().label().is_some()
     }
 
     pub fn make_serializeable(self) -> Vec<Instr> {
@@ -136,6 +140,27 @@ impl Node {
         }
     }
 
+    pub fn successor_refs(&self) -> Vec<Rc<Node>> {
+        let successor: &Option<Link> = &self.out.borrow();
+
+        match successor {
+            Some(link) => {
+                match link {
+                    Link::Ret => Vec::new(),
+                    Link::Exit => Vec::new(),
+                    Link::Fallthrough(weak) => Weak::upgrade(weak).map_or(Vec::new(), |s| { vec! [s] }),
+                    Link::Jump(weak) => Weak::upgrade(weak).map_or(Vec::new(), |s| { vec! [s] }),
+                    Link::Branch { true_branch, false_branch } => {
+                        let mut true_br = Weak::upgrade(true_branch).map_or(Vec::new(), |s| { vec! [s] });
+                        let mut false_br  = Weak::upgrade(false_branch).map_or(Vec::new(), |s| { vec! [s] });
+                        true_br.append(&mut false_br);
+                        true_br
+                    }
+                }
+            }
+            None => Vec::new()
+        }
+    }
 }
 
 
