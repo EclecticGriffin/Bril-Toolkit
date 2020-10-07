@@ -163,6 +163,12 @@ impl Node {
     }
 }
 
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.label() == other.label()
+    }
+}
+
 
 pub fn construct_cfg_nodes(instrs: Vec<Block>) -> Vec<Rc<Node>> {
     instrs.into_iter().map(|x|{Rc::new(
