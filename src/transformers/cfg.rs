@@ -195,6 +195,13 @@ impl Node {
             None => Vec::new()
         }
     }
+
+    pub fn prune_missing_predecessors(&self) {
+        let preds: &mut Vec<Weak<Node>> = &mut self.predecessors.borrow_mut();
+        preds.retain(|x| {
+            x.upgrade().is_some()
+        });
+    }
 }
 
 impl PartialEq for Node {

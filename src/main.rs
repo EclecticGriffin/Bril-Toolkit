@@ -35,7 +35,7 @@ fn apply_transformations(mut prog: Program, conf: ConfigOptions) -> Program {
         }
     }
 
-    if conf.lvn.run_lvn() || conf.l_tdce || conf.orphan_block {
+    if conf.lvn.run_lvn() || conf.l_tdce || conf.orphan_block || conf.to_ssa {
         let mut cfg = prog.determine_cfg();
         // for fun in cfg.functions.iter() {
         //     eprintln!("{:?}", fun)
@@ -69,6 +69,16 @@ fn apply_transformations(mut prog: Program, conf: ConfigOptions) -> Program {
                 fun.apply_basic_dce()
             }
         }
+
+        if conf.to_ssa {
+            for fun in cfg.functions.iter_mut() {
+                if !conf.orphan_block{
+                    fun.drop_orphan_blocks()
+                }
+                fun.to_ssa()
+            }
+        }
+
 
         prog = cfg.make_serializeable()
     }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use clap::Values;
-pub const ALLOWED_VALUES: &[&str] = &["all", "g_tdce", "l_tdce", "lvn", "orph", "solo_lvn"];
+pub const ALLOWED_VALUES: &[&str] = &["all", "g_tdce", "l_tdce", "lvn", "orph", "solo_lvn", "to_ssa", "from_ssa"];
 
 pub enum LVNChoice {
     Solo,
@@ -34,6 +34,8 @@ pub struct ConfigOptions {
     pub orphan_block: bool,
     pub l_tdce: bool,
     pub g_tdce: bool,
+    pub to_ssa: bool,
+    pub from_ssa: bool,
     pub lvn: LVNChoice
 }
 
@@ -70,7 +72,9 @@ impl ConfigOptions {
             orphan_block: map["orph"],
             l_tdce: map["l_tdce"],
             g_tdce: map["g_tdce"],
-            lvn
+            lvn,
+            to_ssa: map["to_ssa"],
+            from_ssa: map["from_ssa"]
         }
     }
 }

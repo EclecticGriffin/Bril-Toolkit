@@ -1,5 +1,6 @@
 extract = 'total_dyn_inst: (\d+)'
 benchmarks = '*.bril'
+timeout = 5
 
 [runs.baseline]
 pipeline = [
@@ -25,5 +26,12 @@ pipeline = [
 pipeline = [
     "bril2json",
     "cargo run -- transform -o solo_lvn",
+    "brili -p {args}",
+]
+
+[runs.to_ssa]
+pipeline = [
+    "bril2json",
+    "cargo run -- transform -o to_ssa",
     "brili -p {args}",
 ]

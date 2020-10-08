@@ -6,8 +6,27 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::{Index, IndexMut};
 use std::rc::{Rc, Weak};
 
-fn identify_definitions(nodes: &[Rc<Node>]) -> HashMap<Var, (HashSet<Label>, Type)> {
+fn identify_definitions(nodes: &[Rc<Node>], headers: &[FnHeaders]) -> HashMap<Var, (HashSet<Label>, Type)> {
     let mut var_map: HashMap<Var, (HashSet<Label>, Type)> = HashMap::new();
+    {
+    let contents: &mut Block = &mut nodes[0].contents.borrow_mut();
+
+    for header in headers {
+        let mut set = HashSet::<Label>::with_capacity(1);
+        set.insert(nodes[0].label());
+        var_map.insert(header.name, (set, header.r_type.clone()));
+        contents.0.insert(1, Instr::Value {
+            op: Op::Id,
+            dest: header.name,
+            r_type: header.r_type.clone(),
+            args: vec! [header.name],
+            funcs: Vec::new(),
+            labels: Vec::new(),
+
+        })
+    }
+}
+
     for block in nodes {
         let instrs: &Block = &block.contents.borrow();
         for instr in instrs.0.iter() {
@@ -31,19 +50,29 @@ fn identify_definitions(nodes: &[Rc<Node>]) -> HashMap<Var, (HashSet<Label>, Typ
 }
 
 fn insert_phi_nodes(
-    nodes: &mut [Rc<Node>],
+    nodes: &mut [Rc<Node>], headers: &[FnHeaders]
 ) -> (DominanceTree, HashMap<Var, (HashSet<Label>, Type)>) {
-    let mut def_map = identify_definitions(nodes);
+
+    let mut def_map = identify_definitions(nodes, headers);
     let dom_tree = DominanceTree::new(nodes);
+    // eprintln!("dom tree computed");
+
     for (var, (defs, r_type)) in def_map.iter_mut() {
         let mut queue: VecDeque<Label> = defs.iter().cloned().collect();
+        let def_len = queue.len();
 
         if queue.len() != 1 {
+            // eprintln!(">>>> checking defs of {} total {}", var, def_len);
             while let Some(block_label) = queue.pop_front() {
+                // eprintln!("queue length {}", queue.len());
+                // eprintln!("frontier for {} is {:?} ", block_label, dom_tree.compute_frontier(&block_label));
                 for block in dom_tree.compute_frontier(&block_label) {
+                    eprintln!("frontier for {} contains {}", block_label, block);
+
                     let node = dom_tree.lookup_node(&block);
                     let contents: &mut Block = &mut node.contents.borrow_mut();
                     if contents.len() != 1 {
+                        let mut found = false;
                         for instr in contents.0.iter_mut() {
                             if let Instr::Value {
                                 op: Op::Phi,
@@ -53,14 +82,22 @@ fn insert_phi_nodes(
                                 ..
                             } = instr
                             {
+                                eprintln!("found PHI NODE {}. Have {}", dest, var);
                                 if dest == var {
                                     args.push(*var);
                                     labels.push(block_label);
-                                    break;
+                                    eprintln!("AAAAAAAAAAAAAA +++++++++++++++++++++++++++++++++++");
+                                    found = true;
+                                    break
                                 }
                             }
                         }
+
+                        if found {
+                            continue;
+                        }
                     }
+
                     let new = Instr::Value {
                         op: Op::Phi,
                         dest: *var,
@@ -69,12 +106,17 @@ fn insert_phi_nodes(
                         funcs: vec![],
                         labels: vec![block_label],
                     };
+                    eprintln!("Inserting phi node for {} in {}", var, node.label());
                     contents.0.insert(1, new);
                     defs.insert(node.label());
+
 
                     if !queue.contains(&node.label()) {
                         queue.push_back(node.label());
                     }
+
+
+
                 }
             }
         }
@@ -90,10 +132,15 @@ struct RenameStack {
 
 impl RenameStack {
     // TODO: Fix this definition
-    fn new(vars: std::collections::hash_map::Keys<Var, (HashSet<Label>, Type)>) -> Self {
+    fn new(vars: std::collections::hash_map::Keys<Var, (HashSet<Label>, Type)>, headers: &[FnHeaders]) -> Self {
         let mut stack_map = HashMap::<Var, Vec<Var>>::with_capacity(vars.len());
         for var in vars {
+            // eprintln!("[[[[[[[[[[[INSERTING {}", var);
             stack_map.insert(*var, Vec::new());
+        }
+
+        for header in headers {
+            stack_map.get_mut(&header.name).unwrap().push(header.name);
         }
 
         RenameStack {
@@ -118,20 +165,29 @@ impl RenameStack {
         self.layer -= 1;
     }
 
+    fn contains(&self, target: &Var) -> bool {
+        self.var_stacks.contains_key(target)
+    }
+
     fn push_var(&mut self, old_name: &Var, new_name: Var) {
+        // eprintln!("Old name: {}", old_name);
         self.var_stacks.get_mut(old_name).unwrap().push(new_name)
     }
 
     fn get_top(&self, old_name: &Var) -> Option<Var> {
+        // eprintln!("Old name: {}", old_name);
         match self.var_stacks.get(old_name).unwrap().last() {
             Some(v) => Some(*v),
-            None => None,
+            None => {
+                // eprintln!("There's no rename for {}", old_name);
+                None},
         }
     }
 }
 
 fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack, headers: &[Var]) {
     stack.increase_layer();
+    eprintln!("renaming {}", node.label());
     {
         let contents: &mut Block = &mut node.contents.borrow_mut();
         let block = &mut contents.0;
@@ -140,16 +196,18 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
                 // Constants will only define a new name
                 Instr::Const { dest, .. } => {
                     let new_name = Var(namer().fresh(&dest.0));
-                    *dest = new_name;
                     stack.push_var(dest, new_name);
+                    *dest = new_name;
+
                 }
                 // Phi instrs we only update the new name, not the args
                 Instr::Value {
                     op: Op::Phi, dest, ..
                 } => {
+                    eprintln!("PHI NODE");
                     let new_name = Var(namer().fresh(&dest.0));
-                    *dest = new_name;
                     stack.push_var(dest, new_name);
+                    *dest = new_name;
                 }
                 // Otherwise, update args then the name
                 Instr::Value { op, dest, args, .. } => {
@@ -161,8 +219,8 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
                         }
                     }
                     let new_name = Var(namer().fresh(&dest.0));
-                    *dest = new_name;
                     stack.push_var(dest, new_name);
+                    *dest = new_name;
                 }
                 // Only update args for effects
                 Instr::Effect { args, .. } => {
@@ -180,27 +238,46 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
     }
 
     for successor in node.successor_refs() {
-        let contents: &mut Block = &mut node.contents.borrow_mut();
+        // eprintln!("updating successors");
+        let contents: &mut Block = &mut successor.contents.borrow_mut();
         let block = &mut contents.0;
         for instr in block.iter_mut() {
-            if let Instr::Value { op: Op::Phi, args, dest, labels, ..} = instr {
+            if let Instr::Value { op: op @ Op::Phi, args, dest, labels, ..} = instr {
                 let mut index:usize = 0;
                 let mut found = false;
                 for (idx, arg) in args.iter().enumerate() {
-                    if arg == dest {
+                    if stack.contains(arg) {
                         index = idx;
                         found = true;
                         break
                     }
                 }
                 if !found {
-                    panic!("No arg to rename?")
+                    eprintln!("adding arg to phi node for {}", dest);
+                    args.push(stack.get_top(dest).unwrap());
+                    labels.push(node.label())
+                    // panic!("No arg to rename? {:?} {} {}", args, dest, successor.label())
+                } else {
+                    // eprintln!("rewriting phi node");
+                    // eprintln!("args len {}, idx {}", args.len(), index);
+                    let var = args.get_mut(index).unwrap();
+
+                    if let Some(renamed) = stack.get_top(var){
+                        *var = renamed;
+                        let label = labels.get_mut(index).unwrap();
+                        *label = node.label();
+                    } else {
+                        // The phi node is not valid along this path. Remove
+                        *op = Op::Nop;
+                        *args = vec! [];
+                        *labels = vec! [];
+                    }
+
+                    eprintln!("args len {}", args.len());
+
                 }
 
-                let var = args[index];
 
-                args[index] = stack.get_top(&var).unwrap();
-                labels[index] = node.label()
             }
         }
     }
@@ -209,17 +286,40 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
         rename(&mut child, dom_tree, stack, headers);
     }
 
+    let contents: &mut Block = &mut node.contents.borrow_mut();
+    let block = &mut contents.0;
+    // for instr in block.iter_mut() {
+    //     if let Instr::Value {op: op @ Op::Phi, args, labels, ..} = instr{
+    //         eprintln!("{:?}", args);
+    //         while !args.is_empty() && stack.contains(args.last().unwrap()) {
+    //             args.pop();
+    //             labels.pop();
+    //         }
+    //         if args.is_empty() {
+    //             *op = Op::Nop;
+    //         }
+    //     }
+    // }
+
+    // block.retain(|x| if let Instr::Value { op:Op::Nop, ..} = x {
+    //     false
+    // } else{
+    //     true
+    // });
+
     stack.decrease_layer();
 
 }
 
 pub fn to_ssa(nodes: &mut Vec<Rc<Node>>, headers: &[FnHeaders]) {
-
-    let (dom_tree, mut def_map) = insert_phi_nodes(&mut nodes[..]);
-    for header in headers {
-        def_map.entry(header.name).or_insert((HashSet::new(), header.r_type.clone()));
+    for node in nodes.iter() {
+        node.normalize()
     }
-    let mut stack = RenameStack::new(def_map.keys());
+    eprintln!("running_to_ssa");
+    let (dom_tree, mut def_map) = insert_phi_nodes(&mut nodes[..], headers);
+    eprintln!("phi nodes inserted");
+
+    let mut stack = RenameStack::new(def_map.keys(), headers);
     let header_vars: Vec<Var> = headers.iter().map(|x|x.name).collect();
 
     rename(&mut nodes[0], &dom_tree, &mut stack, &header_vars[..])
