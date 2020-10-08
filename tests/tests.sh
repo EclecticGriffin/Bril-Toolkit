@@ -19,3 +19,11 @@ for b_test in ${BRENCH_TESTS[*]}; do
     cd - > /dev/null
     echo
 done
+
+cd $BRENCH_TESTS;
+echo "Checking SSA";
+for f in *.bril; do
+    result=$((bril2json < "$f") | (cargo run -- transform -o to_ssa) 2> /dev/null | is_ssa)
+
+    echo "$f - $result"
+done
