@@ -135,12 +135,23 @@ impl Node {
         self.predecessors.borrow().iter().map(|x| Weak::upgrade(x).unwrap().label()).collect()
     }
 
+    pub fn successor_labels(&self) -> Vec<Label> {
+        self.successor_refs().iter().map(|x| x.label()).collect()
+    }
+
     pub fn block_label(&self) -> Option<Label>{
         self.contents.borrow().label()
     }
 
     pub fn is_labeled(&self) -> bool {
         self.contents.borrow().label().is_some()
+    }
+
+    pub fn normalize(&self) {
+        if self.block_label().is_none() {
+            let block: &mut Block = &mut self.contents.borrow_mut();
+            block.0.insert(0, Instr::Label {label: self.label})
+        }
     }
 
     pub fn make_serializeable(self) -> Vec<Instr> {

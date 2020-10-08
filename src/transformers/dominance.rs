@@ -36,7 +36,7 @@ fn reverse_post_order(root: &Rc<Node>) -> Vec<Rc<Node>> {
 }
 
 
-pub fn compute_dominance_tree(nodes: &mut [Rc<Node>]) -> HashMap<Label, HashSet<Label>> {
+pub fn determine_dominators(nodes: &[Rc<Node>]) -> HashMap<Label, HashSet<Label>> {
     let mut label_map = HashMap::<Label, HashSet<Label>>::new();
     let ordering = reverse_post_order(&nodes[0]);
 
@@ -68,4 +68,77 @@ pub fn compute_dominance_tree(nodes: &mut [Rc<Node>]) -> HashMap<Label, HashSet<
 
     }
     label_map
+}
+
+pub struct DominanceTree {
+    nodes: HashMap<Label, Rc<Node>>,
+    dom_tree: HashMap<Label, Vec<Label>>,
+    root_label: Label
+}
+
+impl DominanceTree {
+    pub fn new(nodes: &[Rc<Node>]) -> Self {
+        let mut node_map = HashMap::<Label, Rc<Node>>::new();
+        for node in nodes {
+            node_map.insert(node.label(), node.clone());
+        }
+
+        DominanceTree {
+            nodes: node_map,
+            dom_tree: construct_dominance_tree(nodes),
+            root_label: nodes[0].label()
+        }
+    }
+
+    pub fn lookup_node(&self, label: &Label) -> &Rc<Node> {
+        &self.nodes[label]
+    }
+
+    pub fn root_node(&self) -> &Rc<Node> {
+        self.lookup_node(&self.root_label)
+    }
+
+    pub fn get_children(&self, label: &Label) -> Vec<Rc<Node>> {
+        self.dom_tree[label].iter()
+            .map(|x| {self.lookup_node(x)})
+            .cloned()
+            .collect()
+    }
+
+    pub fn compute_frontier(&self, target_label: &Label) -> Vec<Label> {
+        let mut processing_queue: Vec<(Label, Label)> = self.lookup_node(target_label).successor_labels().into_iter().map(|x| (*target_label, x)).collect();
+        let mut frontier = Vec::<Label>::new();
+
+        while let Some((previous, current)) = processing_queue.pop() {
+            if self.dom_tree[&previous].contains(&current) {
+                for successor_label in self.lookup_node(&current).successor_labels() {
+                    processing_queue.push((current, successor_label));
+                }
+            } else {
+                frontier.push(current);
+            }
+    }
+
+    frontier
+    }
+}
+
+fn construct_dominance_tree(nodes: &[Rc<Node>]) -> HashMap<Label, Vec<Label>>{
+    let dominance_map = determine_dominators(nodes);
+    let mut label_map = HashMap::<Label, Rc<Node>>::new();
+
+    for node in nodes {
+        label_map.insert(node.label(), node.clone());
+    }
+    let mut immediate_dominance_map = HashMap::<Label, Vec<Label>>::new();
+
+    for node in nodes {
+        for successor_label in node.successor_refs().iter().map(|x| x.label()) {
+            if dominance_map[&successor_label].contains(&node.label()) && node.label() != successor_label {
+                immediate_dominance_map.get_mut(&node.label()).unwrap().push(successor_label);
+            }
+        }
+    }
+
+    immediate_dominance_map
 }

@@ -46,6 +46,8 @@ pub enum Op {
     FLe,
     FGt,
     FGe,
+    //SSA
+    Phi,
 }
 
 impl Op {

@@ -18,7 +18,7 @@ use std::mem::replace;
 pub struct FnHeaders {
     pub name: Var,
     #[serde(rename = "type")]
-    r_type: Type,
+    pub r_type: Type,
 }
 
 impl FnHeaders {
