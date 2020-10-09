@@ -35,7 +35,8 @@ fn apply_transformations(mut prog: Program, conf: ConfigOptions) -> Program {
         }
     }
 
-    if conf.lvn.run_lvn() || conf.l_tdce || conf.orphan_block || conf.to_ssa {
+    if conf.lvn.run_lvn() || conf.l_tdce || conf.orphan_block || conf.to_ssa
+        || conf.from_ssa {
         let mut cfg = prog.determine_cfg();
         // for fun in cfg.functions.iter() {
         //     eprintln!("{:?}", fun)
@@ -76,6 +77,12 @@ fn apply_transformations(mut prog: Program, conf: ConfigOptions) -> Program {
                     fun.drop_orphan_blocks()
                 }
                 fun.to_ssa()
+            }
+        }
+
+        if conf.from_ssa {
+            for fun in cfg.functions.iter_mut() {
+                fun.from_ssa()
             }
         }
 

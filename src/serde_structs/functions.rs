@@ -9,7 +9,7 @@ use super::super::transformers::cfg::{connect_basic_blocks, construct_basic_bloc
 use super::super::transformers::orphan::remove_inaccessible_blocks;
 use super::super::transformers::dce::{trivial_global_dce,local_dce};
 use super::super::transformers::lvn::run_lvn;
-use super::super::transformers::ssa::to_ssa;
+use super::super::transformers::ssa::{to_ssa, from_ssa};
 
 use std::rc::Rc;
 use crate::analysis;
@@ -182,6 +182,10 @@ impl CFGFunction {
 
     pub fn to_ssa(&mut self) {
         to_ssa(&mut self.blocks, &self.args[..])
+    }
+
+    pub fn from_ssa(&mut self) {
+        from_ssa(&mut self.blocks)
     }
 }
 

@@ -1,4 +1,4 @@
-use super::super::serde_structs::structs::{Label, Instr, Op};
+use super::super::serde_structs::structs::{Label, Instr, Op, Var, Type};
 use super::super::serde_structs::namer;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
@@ -10,7 +10,7 @@ use std::iter::Iterator;
 type LinkTarget = Weak<Node>;
 type LabelMap = HashMap<Label, Rc<Node>>;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Block(pub Vec<Instr>);
 
 impl Block {
@@ -23,7 +23,7 @@ impl Block {
     }
 
     pub fn label(&self) -> Option<Label> {
-        self.0[0].extract_label()
+        self.0.get(0)?.extract_label()
     }
 
     pub fn last(&self) -> &Instr {
@@ -108,8 +108,24 @@ impl Node {
             }
     }
 
+    pub fn empty_block() -> Rc<Self> {
+        let mut new = Node {
+            contents: RefCell::<Block>::default(),
+            out: RefCell::<Option<Link>>::default(),
+            predecessors: RefCell::<Vec<Weak<Node>>>::default(),
+            idx: RefCell::<Option<usize>>::default(),
+            label: namer().fresh_label()
+        };
+        new.normalize();
+        Rc::new(new)
+    }
+
     pub fn new(input: Vec<Instr>) -> Node{
         Node::from_block(Block::new(input))
+    }
+
+    pub fn clear_predecessors(&self) {
+        self.predecessors.replace(Vec::new());
     }
 
     pub fn dummy_block(
@@ -202,6 +218,96 @@ impl Node {
             x.upgrade().is_some()
         });
     }
+
+    pub fn insert_id(&self, var: Var, dest: Var, r_type: Type) {
+        let instr = Instr::Value {
+            op: Op::Id,
+            dest: dest,
+            r_type: r_type,
+            args: vec![var],
+            funcs: Vec::new(),
+            labels: Vec::new(),
+        };
+        let block = &mut *self.contents.borrow_mut();
+        block.0.push(instr);
+    }
+
+    pub fn replace_link(&self, old: Label, new_ref: Weak<Node>, new_label: Label) {
+        let out: &mut Option<Link> = &mut self.out.borrow_mut();
+        if out.is_none() {
+            panic!("replace on unlinked block");
+        }
+        let block = &mut *self.contents.borrow_mut();
+
+        if let Some(Link::Fallthrough(_)) = out {
+            out.replace(Link::Jump(new_ref));
+            block.0.push(Instr::Effect{
+                op: Op::Jmp,
+                labels: vec! [new_label],
+                args: Vec::new(),
+                funcs: Vec::new(),
+            })
+        } else if let Instr::Effect { op, labels, .. } = block.0.last_mut().unwrap() {
+            match op {
+                Op::Jmp => {
+                    if labels[0] == old {
+                        labels[0] = new_label;
+                        out.replace(Link::Jump(new_ref));
+                    } else {
+                        // eprintln!("{} - {}", labels[0], old);
+                        panic!("Jump missing")
+                    }
+                },
+                Op::Br => {
+                    if labels[0] == old {
+                        labels[0] = new_label;
+                        if let Some(Link::Branch { true_branch, ..} ) = out {
+                            *true_branch = new_ref;
+                        } else {
+                            panic!("Branch Link missing")
+                        }
+                    } else if labels[1] == old {
+                        labels[1] = new_label;
+                        if let Some(Link::Branch { false_branch, ..} ) = out {
+                            *false_branch = new_ref;
+                        } else {
+                            panic!("Branch Link missing")
+                        }
+                    } else {
+                        panic!("Malformed {} {:?}",old, labels)
+                    }
+                },
+                _ => {}
+            }
+        } else {
+            panic!("??????")
+        }
+    }
+
+
+
+    pub fn add_jump(&self, target: Weak<Node>, label: Label) {
+        let out: &mut Option<Link> = &mut self.out.borrow_mut();
+        if out.is_some() {
+            panic!("Tried to add jump on linked node")
+        }
+        let block = &mut *self.contents.borrow_mut();
+
+        if let Some(Instr::Effect {op, .. }) = block.0.last() {
+            if *op == Op::Jmp || *op == Op::Br || *op == Op::Ret {
+                panic!("Adding jump to block that already contains a terminal instr");
+            }
+        }
+
+        block.0.push(Instr::Effect {
+            op: Op::Jmp,
+            args: Vec::new(),
+            funcs: Vec::new(),
+            labels: vec! [label],
+        });
+        out.replace(Link::Jump(target));
+    }
+
 }
 
 impl PartialEq for Node {
@@ -394,10 +500,76 @@ pub fn connect_basic_blocks(blocks: &mut Vec<Rc<Node>>) {
         connect_block(current, node, &map)
     }
 
-    connect_terminal_block(blocks.last().unwrap(), &map)
+    connect_terminal_block(blocks.last().unwrap(), &map);
+    let mut replacement_map: HashMap<Label, Weak<Node>> = HashMap::new();
+
+    for node in blocks.iter() {
+        if let Some(Link::Fallthrough(x)) = &*node.out.borrow() {
+            if node.block_label().is_some() && node.contents.borrow().0.len() == 1 {
+                replacement_map.insert(node.label(), x.clone());
+            }
+        }
+    }
+    let mut update: Vec<(Label,Label)> = Vec::new();
+    for node in blocks.iter() {
+        node.clear_predecessors();
+        let contents = &*node.contents.borrow();
+        if let Some(x) = contents.0.last() {
+            if let Instr::Effect { op, labels, .. } = x {
+
+                if *op == Op::Jmp || *op == Op::Br {
+                    for label in labels.iter() {
+                        if replacement_map.contains_key(label) {
+                            update.push((node.label(), *label));
+                        }
+                    }
+
+                }
+            }
+        }
+        if let Some(Link::Fallthrough(x)) = &*node.out.borrow() {
+            let x_lab = x.upgrade().unwrap().label();
+            for (label, reference) in replacement_map.iter(){
+                if x_lab == *label {
+                    update.push((node.label(), *label));
+                    break
+                }
+            }
+        }
+    }
+
+    for (node, target) in update {
+        let new_ref = &replacement_map[&target];
+        let new_label= new_ref.upgrade().unwrap().label();
+        map[&node].replace_link(target, new_ref.clone(), new_label)
+    }
+
+    repair_predecessor_links(blocks);
+
+ }
+
+pub fn repair_predecessor_links(nodes: &mut Vec<Rc<Node>>) {
+    let mut label_map: HashMap<Label, Rc<Node>> = HashMap::new();
+
+    for node in nodes.iter() {
+        match &*node.out.borrow() {
+            Some(x) => {
+                match x {
+                    Link::Fallthrough(successor)
+                    | Link::Jump(successor) => {
+                        successor.upgrade().unwrap().predecessors.borrow_mut().push(Rc::downgrade(node));
+                    }
+                    Link::Branch { true_branch, false_branch } => {
+                        true_branch.upgrade().unwrap().predecessors.borrow_mut().push(Rc::downgrade(node));
+                        false_branch.upgrade().unwrap().predecessors.borrow_mut().push(Rc::downgrade(node));
+                    }
+                    _ => {}
+                }
+            }
+            None => {}
+        }
+    }
 }
-
-
 
 impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

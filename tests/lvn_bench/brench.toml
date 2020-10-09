@@ -35,3 +35,11 @@ pipeline = [
     "cargo run -- transform -o to_ssa",
     "brili -p {args}",
 ]
+
+[runs.to_and_from_ssa]
+pipeline = [
+    "bril2json",
+    "cargo run -- transform -o to_ssa",
+    "cargo run -- transform -o from_ssa",
+    "brili -p {args}",
+]

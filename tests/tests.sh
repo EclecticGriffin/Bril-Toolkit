@@ -15,7 +15,7 @@ for b_test in ${BRENCH_TESTS[*]}; do
 
     cd "$b_test"/
     echo "running tests in $b_test"
-    brench "$BRENCH_CONFIG_NAME" | grep 'missing\|incorrect'
+    brench "$BRENCH_CONFIG_NAME" | grep 'missing\|incorrect\|timeout'
     cd - > /dev/null
     echo
 done

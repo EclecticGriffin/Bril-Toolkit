@@ -1,4 +1,4 @@
-use super::cfg::{Block, Node};
+use super::cfg::{Block, Node, Link};
 use super::dominance::DominanceTree;
 use crate::serde_structs::namer;
 use crate::serde_structs::structs::{Instr, Label, Op, Type, Var, FnHeaders};
@@ -67,7 +67,7 @@ fn insert_phi_nodes(
                 // eprintln!("queue length {}", queue.len());
                 // eprintln!("frontier for {} is {:?} ", block_label, dom_tree.compute_frontier(&block_label));
                 for block in dom_tree.compute_frontier(&block_label) {
-                    eprintln!("frontier for {} contains {}", block_label, block);
+                    // eprintln!("frontier for {} contains {}", block_label, block);
 
                     let node = dom_tree.lookup_node(&block);
                     let contents: &mut Block = &mut node.contents.borrow_mut();
@@ -82,11 +82,9 @@ fn insert_phi_nodes(
                                 ..
                             } = instr
                             {
-                                eprintln!("found PHI NODE {}. Have {}", dest, var);
                                 if dest == var {
                                     args.push(*var);
                                     labels.push(block_label);
-                                    eprintln!("AAAAAAAAAAAAAA +++++++++++++++++++++++++++++++++++");
                                     found = true;
                                     break
                                 }
@@ -106,7 +104,7 @@ fn insert_phi_nodes(
                         funcs: vec![],
                         labels: vec![block_label],
                     };
-                    eprintln!("Inserting phi node for {} in {}", var, node.label());
+                    // eprintln!("Inserting phi node for {} in {}", var, node.label());
                     contents.0.insert(1, new);
                     defs.insert(node.label());
 
@@ -187,7 +185,6 @@ impl RenameStack {
 
 fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack, headers: &[Var]) {
     stack.increase_layer();
-    eprintln!("renaming {}", node.label());
     {
         let contents: &mut Block = &mut node.contents.borrow_mut();
         let block = &mut contents.0;
@@ -204,7 +201,6 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
                 Instr::Value {
                     op: Op::Phi, dest, ..
                 } => {
-                    eprintln!("PHI NODE");
                     let new_name = Var(namer().fresh(&dest.0));
                     stack.push_var(dest, new_name);
                     *dest = new_name;
@@ -253,7 +249,7 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
                     }
                 }
                 if !found {
-                    eprintln!("adding arg to phi node for {}", dest);
+                    // eprintln!("adding arg to phi node for {}", dest);
                     args.push(stack.get_top(dest).unwrap());
                     labels.push(node.label())
                     // panic!("No arg to rename? {:?} {} {}", args, dest, successor.label())
@@ -273,7 +269,6 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
                         *labels = vec! [];
                     }
 
-                    eprintln!("args len {}", args.len());
 
                 }
 
@@ -288,24 +283,25 @@ fn rename(node: &mut Rc<Node>, dom_tree: &DominanceTree, stack: &mut RenameStack
 
     let contents: &mut Block = &mut node.contents.borrow_mut();
     let block = &mut contents.0;
-    // for instr in block.iter_mut() {
-    //     if let Instr::Value {op: op @ Op::Phi, args, labels, ..} = instr{
-    //         eprintln!("{:?}", args);
-    //         while !args.is_empty() && stack.contains(args.last().unwrap()) {
-    //             args.pop();
-    //             labels.pop();
-    //         }
-    //         if args.is_empty() {
-    //             *op = Op::Nop;
-    //         }
-    //     }
-    // }
+    // TODO: Figure out how to get rid of this
+    for instr in block.iter_mut() {
+        if let Instr::Value {op: op @ Op::Phi, args, labels, ..} = instr{
+            // eprintln!("{:?}", args);
+            while !args.is_empty() && stack.contains(args.last().unwrap()) {
+                args.pop();
+                labels.pop();
+            }
+            if args.is_empty() {
+                *op = Op::Nop;
+            }
+        }
+    }
 
-    // block.retain(|x| if let Instr::Value { op:Op::Nop, ..} = x {
-    //     false
-    // } else{
-    //     true
-    // });
+    block.retain(|x| if let Instr::Value { op:Op::Nop, ..} = x {
+        false
+    } else{
+        true
+    });
 
     stack.decrease_layer();
 
@@ -315,12 +311,90 @@ pub fn to_ssa(nodes: &mut Vec<Rc<Node>>, headers: &[FnHeaders]) {
     for node in nodes.iter() {
         node.normalize()
     }
-    eprintln!("running_to_ssa");
     let (dom_tree, mut def_map) = insert_phi_nodes(&mut nodes[..], headers);
-    eprintln!("phi nodes inserted");
 
     let mut stack = RenameStack::new(def_map.keys(), headers);
     let header_vars: Vec<Var> = headers.iter().map(|x|x.name).collect();
 
     rename(&mut nodes[0], &dom_tree, &mut stack, &header_vars[..])
+}
+
+pub fn from_ssa(nodes: &mut Vec<Rc<Node>>) {
+    let mut label_map: HashMap<Label, Rc<Node>> = HashMap::new();
+
+    for node in nodes.iter() {
+        node.clear_predecessors();
+        label_map.insert(node.label(), node.clone());
+    }
+
+    let mut new_nodes: Vec<Rc<Node>> = Vec::new();
+    let mut fix_list: Vec<(Label, Rc<Node>)> = Vec::new();
+
+    let mut new_nodes_map: HashMap<(Label, Label), Rc<Node>> = HashMap::new();
+
+    for node in nodes.iter_mut() {
+        let block = &mut *node.contents.borrow_mut();
+        // let mut correction_list: Vec<> = vec! [];
+
+        for instr in block.0.iter_mut() {
+            if let Instr::Value {op: Op::Phi, args, labels, dest, r_type,..} = instr {
+                for (var, label) in args.iter().zip(labels.iter()) {
+
+                    let new_node = new_nodes_map.entry((node.label(), *label)).or_insert(Node::empty_block());
+                    new_node.insert_id(*var, *dest, r_type.clone());
+                    // if *label != node.label() {
+                    //     label_map.get_mut(label).unwrap().replace_link(node.label(), Rc::downgrade(&new_node), new_node.label());
+                    //     new_nodes.push(new_node);
+                    // } else {
+                    //     fix_list.push((*label, new_node));
+                    // }
+                }
+            }
+        }
+    }
+
+    for ((to, from), new_node) in new_nodes_map.drain() {
+        {
+            let target = &label_map[&to];
+            new_node.add_jump(Rc::downgrade(target), target.label());
+        }
+        label_map[&from].replace_link(to,
+                            Rc::downgrade(&new_node),
+                                    new_node.label());
+        nodes.push(new_node);
+    }
+
+    // for (label, new_node) in fix_list {
+    //     // eprintln!("{} {}", label, new_node.label());
+    //     label_map.get_mut(&label).unwrap().replace_link(label, Rc::downgrade(&new_node), new_node.label());
+    //     new_nodes.push(new_node);
+    // }
+
+    nodes.append(&mut new_nodes);
+
+    let len = nodes.len();
+
+    for (idx,node) in nodes.iter_mut().enumerate() {
+        node.contents.borrow_mut().0.retain(|x| {
+            if let Instr::Value {op:Op::Phi, ..} = x {
+                false
+            } else {
+                true
+            }
+        });
+
+        if let Some(Link::Exit) = &*node.out.borrow() {
+            if idx != len-1{
+                node.contents.borrow_mut().0.push(Instr::Effect {
+                    op: Op::Ret,
+                    args: Vec::new(),
+                    funcs: Vec::new(),
+                    labels: Vec::new(),
+                });
+            }
+
+        }
+
+    }
+
 }

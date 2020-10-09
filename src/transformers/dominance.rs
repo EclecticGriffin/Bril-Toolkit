@@ -66,7 +66,7 @@ pub fn determine_dominators(nodes: &[Rc<Node>]) -> HashMap<Label, HashSet<Label>
         changed = false;
         for node in ordering.iter() {
             let preds = node.predecessor_labels();
-            let sets: Vec<&HashSet<Label>> = preds.into_iter().map(|x| {eprintln!("{}", x); &label_map[&x]}).collect();
+            let sets: Vec<&HashSet<Label>> = preds.into_iter().map(|x| {&label_map[&x]}).collect();
 
             let intersect = set_intersection(sets);
             let mut current = HashSet::<Label>::with_capacity(1);
@@ -127,18 +127,14 @@ impl DominanceTree {
         let mut frontier = Vec::<Label>::new();
         let mut processed: HashSet<Label> = HashSet::new();
         processed.insert(*target_label);
-        eprintln!("<!> Computing frontier for {}", target_label);
 
         while let Some(current) = processing_queue.pop() {
             if self.dominated_map[&current].contains(target_label) {
-                eprintln!("<> {} is dominated by {}", current, target_label);
                 processed.insert(current);
                 for successor_label in self.lookup_node(&current).successor_labels() {
-                    // eprintln!("pushing {:?}", (current, successor_label));
                     if !processed.contains(&successor_label) {
                         processing_queue.push(successor_label);
                     } else if successor_label == *target_label && !frontier.contains(target_label) {
-                        eprintln!("OVER HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         frontier.push(successor_label);
                     }
                 }
@@ -171,17 +167,17 @@ fn construct_dominance_tree(nodes: &[Rc<Node>]) -> (HashMap<Label, Vec<Label>>, 
         }
     }
 
-    for (label, doms) in dominance_map.iter() {
-        eprint!("{} is dominated by [", label);
-        for label in doms.iter() {
-            eprint!(" {}", label)
-        }
-        eprintln!("]");
-   }
+//     for (label, doms) in dominance_map.iter() {
+//         eprint!("{} is dominated by [", label);
+//         for label in doms.iter() {
+//             eprint!(" {}", label)
+//         }
+//         eprintln!("]");
+//    }
 
-    for (label, doms) in immediate_dominance_map.iter() {
-         eprintln!("{} dominates {:?}", label, doms);
-    }
+    // for (label, doms) in immediate_dominance_map.iter() {
+    //      eprintln!("{} dominates {:?}", label, doms);
+    // }
 
     (immediate_dominance_map, dominance_map)
 }
