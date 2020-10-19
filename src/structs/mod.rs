@@ -4,6 +4,7 @@ mod program;
 mod names;
 mod operations;
 mod instructions;
+mod graph;
 
 pub use names::namer;
 

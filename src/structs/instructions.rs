@@ -5,6 +5,12 @@ use super::names::{FnName, Label, namer, Var};
 use super::basic_types::{Literal, Type};
 use super::operations::Op;
 
+impl Label {
+    pub fn as_instr(&self) -> Instr {
+        Instr::Label {label: *self}
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Instr {

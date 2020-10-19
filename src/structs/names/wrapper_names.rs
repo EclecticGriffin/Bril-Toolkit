@@ -31,6 +31,12 @@ impl Label {
     }
 }
 
+impl Default for Label {
+    fn default() -> Self {
+        namer().fresh_label()
+    }
+}
+
 impl FnName {
     pub fn unwrap(&self) -> u64 {
         self.0.unwrap()
