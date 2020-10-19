@@ -1,5 +1,5 @@
 use super::cfg::{Node, Block};
-use crate::serde_structs::structs::{Instr, Label};
+use crate::structs::{Instr, Label};
 use std::rc::{Rc, Weak};
 use std::collections::{HashMap, HashSet};
 use crate::analysis::dehydrated::{set_intersection, set_union};

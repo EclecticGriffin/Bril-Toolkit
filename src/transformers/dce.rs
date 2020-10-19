@@ -1,6 +1,6 @@
 use std::collections::{HashSet};
 use super::cfg::{Node};
-use crate::serde_structs::structs::{Var, Instr, };
+use crate::structs::{Var, Instr, };
 
 pub fn local_dce(node: &Node) {
     let mut block = node.contents.borrow_mut();

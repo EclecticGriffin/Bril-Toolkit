@@ -1,5 +1,5 @@
-use super::super::serde_structs::structs::{Label, Instr, Op, Var, Type};
-use super::super::serde_structs::namer;
+use super::super::structs::{Label, Instr, Op, Var, Type};
+use super::super::structs::namer;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::{cell::RefCell, fmt, fmt::Display};

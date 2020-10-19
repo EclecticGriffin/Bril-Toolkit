@@ -3,7 +3,7 @@ use super::dehydrated::set_union;
 use std::collections::HashSet;
 use std::cell::RefCell;
 use super::super::transformers::cfg::Link;
-use crate::serde_structs::namer;
+use crate::structs::namer;
 
 type Data = HashSet<VarDef>;
 

@@ -1,7 +1,7 @@
 use super::cfg::{Block, Node, Link};
 use super::dominance::DominanceTree;
-use crate::serde_structs::namer;
-use crate::serde_structs::structs::{Instr, Label, Op, Type, Var, FnHeaders};
+use crate::structs::namer;
+use crate::structs::{Instr, Label, Op, Type, Var, FnHeaders};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::{Index, IndexMut};
 use std::rc::{Rc, Weak};

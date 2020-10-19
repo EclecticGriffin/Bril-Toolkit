@@ -1,10 +1,10 @@
-mod serde_structs;
+mod structs;
 mod transformers;
 mod analysis;
 
 use std::io::{self, Read};
 use std::process::exit;
-use serde_structs::structs::{Program, CFGFunction};
+use structs::{Program, CFGFunction};
 use clap::{Arg, App, SubCommand};
 use transformers::config::ConfigOptions;
 

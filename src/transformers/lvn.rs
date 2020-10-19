@@ -1,5 +1,5 @@
-use crate::serde_structs::namer;
-use crate::serde_structs::structs::{Instr, Literal, Op, Var};
+use crate::structs::namer;
+use crate::structs::{Instr, Literal, Op, Var};
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 

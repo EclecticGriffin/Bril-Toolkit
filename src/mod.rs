@@ -1,2 +1,2 @@
-mod serde_structs;
+mod structs;
 pub mod transformers;
