@@ -1,4 +1,4 @@
-# Bril Toolkit? - Lesson 5: SSA
+# Bril Toolkit - Prelude to Lesson 6
 ## Griffin Berlstein
 
 ### Build Instructions
